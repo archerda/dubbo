@@ -76,6 +76,7 @@ public abstract class AbstractConfig implements Serializable {
         Runtime.getRuntime().addShutdownHook(DubboShutdownHook.getDubboShutdownHook());
     }
 
+    // bean的id，比如"com.github.archerda.dubbo.provider.HelloService"
     protected String id;
 
     private static String convertLegacyValue(String key, String value) {
@@ -90,6 +91,12 @@ public abstract class AbstractConfig implements Serializable {
     }
 
     protected static void appendProperties(AbstractConfig config) {
+        /*
+        设置配置的参数;
+        主要是setter方法和is方法,如果没有值的话,就从 系统属性 中获取相应的值;
+        或者是利用getter方法获取到相应属性的值,然后赋值到属性上;
+         */
+
         if (config == null) {
             return;
         }

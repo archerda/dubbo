@@ -51,6 +51,8 @@ import java.lang.annotation.Target;
  * instead of reporting which extract extension implementation fails and the extract reason.
  * </p>
  */
+
+// @SPI注解, 被此注解标记的接口，就表示是一个可扩展的接口。
 @Documented
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE})

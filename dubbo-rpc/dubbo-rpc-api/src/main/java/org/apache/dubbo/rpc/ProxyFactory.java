@@ -24,6 +24,7 @@ import org.apache.dubbo.common.extension.SPI;
 /**
  * ProxyFactory. (API/SPI, Singleton, ThreadSafe)
  */
+//默认用 javassist 实现代理;
 @SPI("javassist")
 public interface ProxyFactory {
 

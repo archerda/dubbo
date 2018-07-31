@@ -30,6 +30,12 @@ import java.lang.annotation.Target;
  * @see ExtensionLoader
  * @see URL
  */
+/*
+@Adaptive注解，有两种注解方式：一种是注解在类上，一种是注解在方法上。
+    - 注解在类上，而且是注解在实现类上，目前dubbo只有AdaptiveCompiler和AdaptiveExtensionFactory类上标注了此注解，这是些特殊的类，ExtensionLoader需要依赖他们工作，所以得使用此方式。
+    - 注解在方法上，注解在接口的方法上，除了上面两个类之外，所有的都是注解在方法上。ExtensionLoader根据接口定义动态的生成适配器代码，
+      并实例化这个生成的动态类。被Adaptive注解的方法会生成具体的方法实现。没有注解的方法生成的实现都是抛不支持的操作异常UnsupportedOperationException。被注解的方法在生成的动态类中，会根据url里的参数信息，来决定实际调用哪个扩展。
+ */
 @Documented
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE, ElementType.METHOD})

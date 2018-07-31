@@ -107,6 +107,8 @@ public class StubProxyFactoryWrapper implements ProxyFactory {
 
     @Override
     public <T> Invoker<T> getInvoker(T proxy, Class<T> type, URL url) throws RpcException {
+        // 获取 invoker, 调用"com.alibaba.dubbo.rpc.proxy.javassist.JavassistProxyFactory#getInvoker"
+        // 或者 "com.alibaba.dubbo.rpc.proxy.jdk.JdkProxyFactory#getInvoker"
         return proxyFactory.getInvoker(proxy, type, url);
     }
 

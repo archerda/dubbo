@@ -123,37 +123,64 @@ public class RegistryProtocol implements Protocol {
     }
 
     public void register(URL registryUrl, URL registedProviderUrl) {
+        // 获取到 ZookeeperRegistry;
         Registry registry = registryFactory.getRegistry(registryUrl);
+
+        // 执行 ZookeeperRegistry#register, 实际调用父类 org.apache.dubbo.registry.support.FailbackRegistry.register;
         registry.register(registedProviderUrl);
     }
 
     @Override
     public <T> Exporter<T> export(final Invoker<T> originInvoker) throws RpcException {
         //export invoker
+        // 暴露服务的监听
         final ExporterChangeableWrapper<T> exporter = doLocalExport(originInvoker);
 
+        // 注册服务
+        // 获取注册URL,
+        // "zookeeper://119.29.148.121:2181/com.alibaba.dubbo.registry.RegistryService?application=java-example-app
+        // &dubbo=2.6.2&export=dubbo%3A%2F%2F10.21.0.47%3A20880%2Fcom.github.archerda.dubbo.provider.HelloService
+        // %3Fanyhost%3Dtrue%26application%3Djava-example-app%26bind.ip%3D10.21.0.47%26bind.port%3D20880
+        // %26default.retries%3D0%26default.timeout%3D3000%26dubbo%3D2.6.2%26generic%3Dfalse%26interface
+        // %3Dcom.github.archerda.dubbo.provider.HelloService%26methods%3DsayHello%26pid%3D55699%26side
+        // %3Dprovider%26timestamp%3D1532671765085&pid=55699&timestamp=1532671713527"
         URL registryUrl = getRegistryUrl(originInvoker);
 
         //registry provider
+        // 获取注册器("ZookeeperRegistry");
         final Registry registry = getRegistry(originInvoker);
+
+        // 获取已注册的提供者URL;
+        // dubbo://10.21.0.47:20880/com.github.archerda.dubbo.provider.HelloService?anyhost=true
+        // &application=java-example-app&default.retries=0&default.timeout=3000&dubbo=2.6.2&generic=false
+        // &interface=com.github.archerda.dubbo.provider.HelloService&methods=sayHello&pid=55699&side=provider
+        // &timestamp=1532671765085
         final URL registedProviderUrl = getRegistedProviderUrl(originInvoker);
 
         //to judge to delay publish whether or not
+        // 判断是否延迟注册;
         boolean register = registedProviderUrl.getParameter("register", true);
 
+        // 注册提供者
         ProviderConsumerRegTable.registerProvider(originInvoker, registryUrl, registedProviderUrl);
 
         if (register) {
+
+            // 开始注册到远程;
             register(registryUrl, registedProviderUrl);
+
             ProviderConsumerRegTable.getProviderWrapper(originInvoker).setReg(true);
         }
 
         // Subscribe the override data
+        // 注册提供者被覆盖的情况;
         // FIXME When the provider subscribes, it will affect the scene : a certain JVM exposes the service and call the same service. Because the subscribed is cached key with the name of the service, it causes the subscription information to cover.
         final URL overrideSubscribeUrl = getSubscribedOverrideUrl(registedProviderUrl);
         final OverrideListener overrideSubscribeListener = new OverrideListener(overrideSubscribeUrl, originInvoker);
         overrideListeners.put(overrideSubscribeUrl, overrideSubscribeListener);
+        // 订阅注册中心服务
         registry.subscribe(overrideSubscribeUrl, overrideSubscribeListener);
+
         //Ensure that a new exporter instance is returned every time export
         return new DestroyableExporter<T>(exporter, originInvoker, overrideSubscribeUrl, registedProviderUrl);
     }
@@ -167,6 +194,7 @@ public class RegistryProtocol implements Protocol {
                 exporter = (ExporterChangeableWrapper<T>) bounds.get(key);
                 if (exporter == null) {
                     final Invoker<?> invokerDelegete = new InvokerDelegete<T>(originInvoker, getProviderUrl(originInvoker));
+                    // 调用 DubboProtocol#export
                     exporter = new ExporterChangeableWrapper<T>((Exporter<T>) protocol.export(invokerDelegete), originInvoker);
                     bounds.put(key, exporter);
                 }
@@ -435,7 +463,10 @@ public class RegistryProtocol implements Protocol {
      */
     private class ExporterChangeableWrapper<T> implements Exporter<T> {
 
+        // DelegateProviderMetaDataInvoker
         private final Invoker<T> originInvoker;
+
+        // ListenerExporterWrapper
         private Exporter<T> exporter;
 
         public ExporterChangeableWrapper(Exporter<T> exporter, Invoker<T> originInvoker) {

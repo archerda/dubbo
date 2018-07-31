@@ -56,6 +56,11 @@ import java.util.regex.Pattern;
  * @see org.apache.dubbo.common.extension.Adaptive
  * @see org.apache.dubbo.common.extension.Activate
  */
+/*
+ExtensionLoader 是dubbo的SPI机制的查找服务实现的工具类，类似与Java的ServiceLoader，可做类比。
+dubbo约定扩展点配置文件放在classpath下的/META-INF/dubbo，/META-INF/dubbo/internal，/META-INF/services目录下，
+配置文件名为接口的全限定名，配置文件内容为配置名=扩展实现类的全限定名。
+ */
 public class ExtensionLoader<T> {
 
     private static final Logger logger = LoggerFactory.getLogger(ExtensionLoader.class);
@@ -442,6 +447,7 @@ public class ExtensionLoader<T> {
                     instance = cachedAdaptiveInstance.get();
                     if (instance == null) {
                         try {
+                            // 调用 createAdaptiveExtension;
                             instance = createAdaptiveExtension();
                             cachedAdaptiveInstance.set(instance);
                         } catch (Throwable t) {
@@ -497,6 +503,11 @@ public class ExtensionLoader<T> {
             }
             injectExtension(instance);
             Set<Class<?>> wrapperClasses = cachedWrapperClasses;
+            // 如果有wrapperClass，则把原始对象作为构造器参数构建装饰对象
+            // 比如,当那么="registry"的时候, wrapperClasses 有3个值,
+            // 分别是"class com.alibaba.dubbo.rpc.protocol.ProtocolFilterWrapper"
+            // "class com.alibaba.dubbo.rpc.protocol.ProtocolListenerWrapper"
+            // "class com.alibaba.dubbo.qos.protocol.QosProtocolWrapper"
             if (wrapperClasses != null && !wrapperClasses.isEmpty()) {
                 for (Class<?> wrapperClass : wrapperClasses) {
                     instance = injectExtension((T) wrapperClass.getConstructor(type).newInstance(instance));
@@ -577,12 +588,17 @@ public class ExtensionLoader<T> {
         }
 
         Map<String, Class<?>> extensionClasses = new HashMap<String, Class<?>>();
+
+        // 从 META-INF/dubbo/internal 中加载;
         loadDirectory(extensionClasses, DUBBO_INTERNAL_DIRECTORY, type.getName());
         loadDirectory(extensionClasses, DUBBO_INTERNAL_DIRECTORY, type.getName().replace("org.apache", "com.alibaba"));
+        // 从 META-INF/dubbo/ 中加载;
         loadDirectory(extensionClasses, DUBBO_DIRECTORY, type.getName());
         loadDirectory(extensionClasses, DUBBO_DIRECTORY, type.getName().replace("org.apache", "com.alibaba"));
+        // 从 META-INF/services/ 中加载;
         loadDirectory(extensionClasses, SERVICES_DIRECTORY, type.getName());
         loadDirectory(extensionClasses, SERVICES_DIRECTORY, type.getName().replace("org.apache", "com.alibaba"));
+
         return extensionClasses;
     }
 
@@ -695,6 +711,8 @@ public class ExtensionLoader<T> {
 
     private boolean isWrapperClass(Class<?> clazz) {
         try {
+            // 如果类的构造体有 type 作为参数, 说明它是一个包装类;
+            // 比如, ProtocolFilterWrapper, 有构造方法 "public ProtocolFilterWrapper(Protocol protocol)";
             clazz.getConstructor(type);
             return true;
         } catch (NoSuchMethodException e) {
@@ -718,6 +736,7 @@ public class ExtensionLoader<T> {
     @SuppressWarnings("unchecked")
     private T createAdaptiveExtension() {
         try {
+            // 调用 getAdaptiveExtensionClass;
             return injectExtension((T) getAdaptiveExtensionClass().newInstance());
         } catch (Exception e) {
             throw new IllegalStateException("Can not create adaptive extension " + type + ", cause: " + e.getMessage(), e);
@@ -729,10 +748,12 @@ public class ExtensionLoader<T> {
         if (cachedAdaptiveClass != null) {
             return cachedAdaptiveClass;
         }
+        // 调用 createAdaptiveExtensionClass;
         return cachedAdaptiveClass = createAdaptiveExtensionClass();
     }
 
     private Class<?> createAdaptiveExtensionClass() {
+        // 调用 createAdaptiveExtensionClassCode, 开始拼接源码;
         String code = createAdaptiveExtensionClassCode();
         ClassLoader classLoader = findClassLoader();
         org.apache.dubbo.common.compiler.Compiler compiler = ExtensionLoader.getExtensionLoader(org.apache.dubbo.common.compiler.Compiler.class).getAdaptiveExtension();

@@ -35,12 +35,18 @@ public class ProviderConsumerRegTable {
 
     public static void registerProvider(Invoker invoker, URL registryUrl, URL providerUrl) {
         ProviderInvokerWrapper wrapperInvoker = new ProviderInvokerWrapper(invoker, registryUrl, providerUrl);
+
+        // 获取唯一的服务名称,接口+版本号, 如:"com.github.archerda.dubbo.provider.HelloService:1.0"
         String serviceUniqueName = providerUrl.getServiceKey();
+
+        // providerInvokers 保存了key为"com.github.archerda.dubbo.provider.HelloService:1.0",
+        // value为ProviderInvokerWrapper的键值对, 也就是它保存了所有的提供者;
         Set<ProviderInvokerWrapper> invokers = providerInvokers.get(serviceUniqueName);
         if (invokers == null) {
             providerInvokers.putIfAbsent(serviceUniqueName, new ConcurrentHashSet<ProviderInvokerWrapper>());
             invokers = providerInvokers.get(serviceUniqueName);
         }
+
         invokers.add(wrapperInvoker);
     }
 

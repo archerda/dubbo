@@ -32,24 +32,32 @@ public abstract class AbstractMethodConfig extends AbstractConfig {
     private static final long serialVersionUID = 1L;
 
     // timeout for remote invocation in milliseconds
+    // 远程服务调用超时时间(毫秒)，缺省1000
     protected Integer timeout;
 
     // retry times
+    // 远程服务调用重试次数，不包括第一次调用，不需要重试请设为0，缺省2
     protected Integer retries;
 
     // max concurrent invocations
+    // 最大的并发调用
     protected Integer actives;
 
     // load balance
+    // 负载均衡策略，可选值：random,roundrobin,leastactive，分别表示：随机，轮循，最少活跃调用
     protected String loadbalance;
 
     // whether to async
+    // 是否缺省异步执行，不可靠异步，只是忽略返回值，不阻塞执行线程，缺省false
     protected Boolean async;
 
     // whether to ack async-sent
     protected Boolean sent;
 
     // the name of mock class which gets called when a service fails to execute
+    // 设为true，表示使用缺省Mock类名，即：接口名 + Mock后缀，服务接口调用失败Mock实现类，
+    // 该Mock类必须有一个无参构造函数，与Local的区别在于，Local总是被执行，而Mock只在出现非业务异常(比如超时，网络异常等)时执行，
+    // Local在远程调用之前执行，Mock在远程调用后执行。
     protected String mock;
 
     // merger
@@ -62,6 +70,7 @@ public abstract class AbstractMethodConfig extends AbstractConfig {
     protected String validation;
 
     // customized parameters
+    // 自定义参数；
     protected Map<String, String> parameters;
 
     public Integer getTimeout() {

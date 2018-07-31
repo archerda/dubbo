@@ -244,8 +244,10 @@ public class DubboProtocol extends AbstractProtocol {
     public <T> Exporter<T> export(Invoker<T> invoker) throws RpcException {
         URL url = invoker.getUrl();
 
-        // export service.
+        // export service. 暴露服务;
+        // key = "com.github.archerda.dubbo.provider.HelloService:1.0:20880"
         String key = serviceKey(url);
+        // 创建 DubboExporter;
         DubboExporter<T> exporter = new DubboExporter<T>(invoker, key, exporterMap);
         exporterMap.put(key, exporter);
 
@@ -264,15 +266,20 @@ public class DubboProtocol extends AbstractProtocol {
             }
         }
 
+        // 建立服务监听
         openServer(url);
+
+        // 优化序列化;
         optimizeSerialization(url);
+
         return exporter;
     }
 
     private void openServer(URL url) {
-        // find server.
+        // find server. 寻找dubbo服务器地址, 比如"192.168.2.101:20880";
         String key = url.getAddress();
         //client can export a service which's only for server to invoke
+        // 判断service是不是server端, client端不能开启监听;
         boolean isServer = url.getParameter(Constants.IS_SERVER_KEY, true);
         if (isServer) {
             ExchangeServer server = serverMap.get(key);
@@ -280,6 +287,7 @@ public class DubboProtocol extends AbstractProtocol {
                 synchronized (this) {
                     server = serverMap.get(key);
                     if (server == null) {
+                        // 新建服务器;
                         serverMap.put(key, createServer(url));
                     }
                 }
@@ -297,12 +305,16 @@ public class DubboProtocol extends AbstractProtocol {
         url = url.addParameterIfAbsent(Constants.HEARTBEAT_KEY, String.valueOf(Constants.DEFAULT_HEARTBEAT));
         String str = url.getParameter(Constants.SERVER_KEY, Constants.DEFAULT_REMOTING_SERVER);
 
+        // str = "netty"
         if (str != null && str.length() > 0 && !ExtensionLoader.getExtensionLoader(Transporter.class).hasExtension(str))
             throw new RpcException("Unsupported server type: " + str + ", url: " + url);
 
         url = url.addParameter(Constants.CODEC_KEY, DubboCodec.NAME);
         ExchangeServer server;
         try {
+            // 建立绑定;
+            // url = "dubbo://192.168.2.101:20880/com.github.archerda.dubbo.provider.HelloService?anyhost=true&application=java-example-app&bind.ip=192.168.2.101&bind.port=20880&channel.readonly.sent=true&codec=dubbo&default.retries=0&default.timeout=3000&dubbo=2.6.2&generic=false&heartbeat=60000&interface=com.github.archerda.dubbo.provider.HelloService&methods=sayHello&pid=10308&revision=1.0&side=provider&timestamp=1532969253585&version=1.0"
+            // requestHandler = DubboProtocol$1.class
             server = Exchangers.bind(url, requestHandler);
         } catch (RemotingException e) {
             throw new RpcException("Fail to start server(url: " + url + ") " + e.getMessage(), e);

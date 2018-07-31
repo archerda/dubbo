@@ -56,6 +56,8 @@ public class ServiceBean<T> extends ServiceConfig<T> implements InitializingBean
 
     private transient ApplicationContext applicationContext;
 
+    // bean的名称；
+    // 如："com.github.archerda.dubbo.provider.HelloService"
     private transient String beanName;
 
     private transient boolean supportedApplicationListener;
@@ -116,6 +118,7 @@ public class ServiceBean<T> extends ServiceConfig<T> implements InitializingBean
 
     @Override
     public void onApplicationEvent(ContextRefreshedEvent event) {
+        // service是 延迟加载的 && 还没有暴露 && 没有解除暴露，那么就执行暴露操作；
         if (isDelay() && !isExported() && !isUnexported()) {
             if (logger.isInfoEnabled()) {
                 logger.info("The service ready on spring started. service: " + getInterface());
@@ -125,23 +128,43 @@ public class ServiceBean<T> extends ServiceConfig<T> implements InitializingBean
     }
 
     private boolean isDelay() {
+        /*
+         先读取 service 级别的配置，再读取 provider 基本的配置，便于精细化控制各种参数；
+         */
+
+        // 获取 service 级别的 delay；
         Integer delay = getDelay();
         ProviderConfig provider = getProvider();
         if (delay == null && provider != null) {
+            // 获取 provider 级别的 delay；
             delay = provider.getDelay();
         }
+        // 如果支持上下文监听，并且delay没有配置或者delay = -1，那么就是延迟加载的，要等上下文初始化完成后才会初始化；
+        // 最佳实践：所有的service都不配置 delay 属性，或者都配置为-1；
+        // 因为如果提前暴露，如果依赖了容器中的其他还没初始化的bean，可能会导致异常；
         return supportedApplicationListener && (delay == null || delay == -1);
     }
 
     @Override
     @SuppressWarnings({"unchecked", "deprecation"})
     public void afterPropertiesSet() throws Exception {
+
+        // 设置provider
         if (getProvider() == null) {
-            Map<String, ProviderConfig> providerConfigMap = applicationContext == null ? null : BeanFactoryUtils.beansOfTypeIncludingAncestors(applicationContext, ProviderConfig.class, false, false);
+
+            // 从容器中获取 provider 配置；
+            Map<String, ProviderConfig> providerConfigMap = applicationContext == null
+                    ? null : BeanFactoryUtils.beansOfTypeIncludingAncestors(applicationContext, ProviderConfig.class, false, false);
+
             if (providerConfigMap != null && providerConfigMap.size() > 0) {
-                Map<String, ProtocolConfig> protocolConfigMap = applicationContext == null ? null : BeanFactoryUtils.beansOfTypeIncludingAncestors(applicationContext, ProtocolConfig.class, false, false);
+                // 从容器中获取 protocol 配置；
+                Map<String, ProtocolConfig> protocolConfigMap = applicationContext == null
+                        ? null : BeanFactoryUtils.beansOfTypeIncludingAncestors(applicationContext, ProtocolConfig.class, false, false);
+
+                // protocol 配置为空，并且 provider 配置不为空，那么把 provider 的属性设置到 protocol 属性中；
                 if ((protocolConfigMap == null || protocolConfigMap.size() == 0)
                         && providerConfigMap.size() > 1) { // backward compatibility
+
                     List<ProviderConfig> providerConfigs = new ArrayList<ProviderConfig>();
                     for (ProviderConfig config : providerConfigMap.values()) {
                         if (config.isDefault() != null && config.isDefault()) {
@@ -151,11 +174,14 @@ public class ServiceBean<T> extends ServiceConfig<T> implements InitializingBean
                     if (!providerConfigs.isEmpty()) {
                         setProviders(providerConfigs);
                     }
-                } else {
+                }
+                // 设置 provider 属性；
+                else {
                     ProviderConfig providerConfig = null;
                     for (ProviderConfig config : providerConfigMap.values()) {
                         if (config.isDefault() == null || config.isDefault()) {
                             if (providerConfig != null) {
+                                // provider 配置重复，抛出异常；
                                 throw new IllegalStateException("Duplicate provider configs: " + providerConfig + " and " + config);
                             }
                             providerConfig = config;
@@ -167,6 +193,8 @@ public class ServiceBean<T> extends ServiceConfig<T> implements InitializingBean
                 }
             }
         }
+
+        // 设置 application 属性；
         if (getApplication() == null
                 && (getProvider() == null || getProvider().getApplication() == null)) {
             Map<String, ApplicationConfig> applicationConfigMap = applicationContext == null ? null : BeanFactoryUtils.beansOfTypeIncludingAncestors(applicationContext, ApplicationConfig.class, false, false);
@@ -185,6 +213,8 @@ public class ServiceBean<T> extends ServiceConfig<T> implements InitializingBean
                 }
             }
         }
+
+        // 设置 module 属性；
         if (getModule() == null
                 && (getProvider() == null || getProvider().getModule() == null)) {
             Map<String, ModuleConfig> moduleConfigMap = applicationContext == null ? null : BeanFactoryUtils.beansOfTypeIncludingAncestors(applicationContext, ModuleConfig.class, false, false);
@@ -203,6 +233,8 @@ public class ServiceBean<T> extends ServiceConfig<T> implements InitializingBean
                 }
             }
         }
+
+        // 设置 registry 注册中心属性；
         if ((getRegistries() == null || getRegistries().isEmpty())
                 && (getProvider() == null || getProvider().getRegistries() == null || getProvider().getRegistries().isEmpty())
                 && (getApplication() == null || getApplication().getRegistries() == null || getApplication().getRegistries().isEmpty())) {
@@ -219,6 +251,8 @@ public class ServiceBean<T> extends ServiceConfig<T> implements InitializingBean
                 }
             }
         }
+
+        // 设置 monitor 监控中心属性；
         if (getMonitor() == null
                 && (getProvider() == null || getProvider().getMonitor() == null)
                 && (getApplication() == null || getApplication().getMonitor() == null)) {
@@ -238,6 +272,8 @@ public class ServiceBean<T> extends ServiceConfig<T> implements InitializingBean
                 }
             }
         }
+
+        // 设置 protocol 协议属性；
         if ((getProtocols() == null || getProtocols().isEmpty())
                 && (getProvider() == null || getProvider().getProtocols() == null || getProvider().getProtocols().isEmpty())) {
             Map<String, ProtocolConfig> protocolConfigMap = applicationContext == null ? null : BeanFactoryUtils.beansOfTypeIncludingAncestors(applicationContext, ProtocolConfig.class, false, false);
@@ -253,6 +289,8 @@ public class ServiceBean<T> extends ServiceConfig<T> implements InitializingBean
                 }
             }
         }
+
+        // 设置 path 属性；
         if (getPath() == null || getPath().length() == 0) {
             if (beanName != null && beanName.length() > 0
                     && getInterface() != null && getInterface().length() > 0
@@ -260,6 +298,8 @@ public class ServiceBean<T> extends ServiceConfig<T> implements InitializingBean
                 setPath(beanName);
             }
         }
+
+        // 重点！ 如果不是延迟暴露的，则立马暴露出去；
         if (!isDelay()) {
             export();
         }

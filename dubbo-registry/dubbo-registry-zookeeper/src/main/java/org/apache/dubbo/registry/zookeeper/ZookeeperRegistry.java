@@ -110,7 +110,16 @@ public class ZookeeperRegistry extends FailbackRegistry {
 
     @Override
     protected void doRegister(URL url) {
+        /*
+        注册provider, 在zk创建临时节点;
+         */
         try {
+            // 创建zk临时节点;
+            // path="/dubbo/com.github.archerda.dubbo.provider.HelloService/providers/dubbo%3A%2F%2F10.21.0.47%3A20880
+            // %2Fcom.github.archerda.dubbo.provider.HelloService%3Fanyhost%3Dtrue%26application%3Djava-example-app
+            // %26default.retries%3D0%26default.timeout%3D3000%26dubbo%3D2.6.2%26generic%3Dfalse%26interface
+            // %3Dcom.github.archerda.dubbo.provider.HelloService%26methods%3DsayHello%26pid%3D55699%26side%3Dprovider
+            // %26timestamp%3D1532671765085"
             zkClient.create(toUrlPath(url), url.getParameter(Constants.DYNAMIC_KEY, true));
         } catch (Throwable e) {
             throw new RpcException("Failed to register " + url + " to zookeeper " + getUrl() + ", cause: " + e.getMessage(), e);
@@ -119,6 +128,9 @@ public class ZookeeperRegistry extends FailbackRegistry {
 
     @Override
     protected void doUnregister(URL url) {
+        /*
+        取消provider的注册,在zk删除临时节点;
+         */
         try {
             zkClient.delete(toUrlPath(url));
         } catch (Throwable e) {
@@ -128,6 +140,9 @@ public class ZookeeperRegistry extends FailbackRegistry {
 
     @Override
     protected void doSubscribe(final URL url, final NotifyListener listener) {
+        /*
+        订阅provider节点;
+         */
         try {
             if (Constants.ANY_VALUE.equals(url.getServiceInterface())) {
                 String root = toRootPath();
@@ -196,6 +211,10 @@ public class ZookeeperRegistry extends FailbackRegistry {
 
     @Override
     protected void doUnsubscribe(URL url, NotifyListener listener) {
+        /*
+        取消provider节点的订阅;
+         */
+
         ConcurrentMap<NotifyListener, ChildListener> listeners = zkListeners.get(url);
         if (listeners != null) {
             ChildListener zkListener = listeners.get(listener);

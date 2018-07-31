@@ -53,6 +53,9 @@ public class Transporters {
         } else {
             handler = new ChannelHandlerDispatcher(handlers);
         }
+
+        // 调用 Transporter$Adaptive#bind
+        //         com.alibaba.dubbo.remoting.transport.netty.NettyTransporter#bind
         return getTransporter().bind(url, handler);
     }
 

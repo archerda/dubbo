@@ -134,7 +134,10 @@ public abstract class FailbackRegistry extends AbstractRegistry {
         failedUnregistered.remove(url);
         try {
             // Sending a registration request to the server side
+            // 发送注册请求到注册中心;
+            // 调用 com.alibaba.dubbo.registry.zookeeper.ZookeeperRegistry#doRegister
             doRegister(url);
+
         } catch (Exception e) {
             Throwable t = e;
 

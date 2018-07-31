@@ -54,52 +54,69 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
     protected String local;
 
     // local stub class name for the service interface
+    // 设为true，表示使用缺省代理类名，即：接口名 + Local后缀，服务接口客户端本地代理类名，用于在客户端执行本地逻辑，如本地缓存等，
+    // 该本地代理类的构造函数必须允许传入远程代理对象，构造函数如：public XxxServiceLocal(XxxService xxxService)
     protected String stub;
 
     // service monitor
+    // 监控中心；
     protected MonitorConfig monitor;
 
     // proxy type
+    // 生成动态代理方式，可选：jdk/javassist
     protected String proxy;
 
     // cluster type
+    // 集群方式，可选：failover/failfast/failsafe/failback/forking
     protected String cluster;
 
     // filter
+    // 服务提供方远程调用过程拦截器名称，多个名称用逗号分隔
     protected String filter;
 
     // listener
+    // 服务提供方导出服务监听器名称，多个名称用逗号分隔
     protected String listener;
 
     // owner
+    // 服务负责人，用于服务治理，请填写负责人公司邮箱前缀
     protected String owner;
 
     // connection limits, 0 means shared connection, otherwise it defines the connections delegated to the
     // current service
+    // 对每个提供者的最大连接数，rmi、http、hessian等短连接协议表示限制连接数，dubbo等长连接协表示建立的长连接个数
     protected Integer connections;
 
     // layer
+    // 服务提供者所在的分层。如：biz、dao、intl:web、china:acton。
     protected String layer;
 
     // application info
+    // 应用配置；
     protected ApplicationConfig application;
 
     // module info
+    // 模块配置；
     protected ModuleConfig module;
 
     // registry centers
+    // 注册中心列表；
     protected List<RegistryConfig> registries;
 
     // connection events
+    // 连接事件；
     protected String onconnect;
 
     // disconnection events
+    // 断开连接事件；
     protected String ondisconnect;
 
     // callback limits
+    // 回调限制；
     private Integer callbacks;
 
     // the scope for referring/exporting a service, if it's local, it means searching in current JVM only.
+    // 范围，如果是 "local"，则表明只在当前JVM中查找；
     private String scope;
 
     protected void checkRegistry() {
@@ -160,36 +177,74 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
         checkRegistry();
         List<URL> registryList = new ArrayList<URL>();
         if (registries != null && !registries.isEmpty()) {
+            // 遍历每个注册中心;
             for (RegistryConfig config : registries) {
+
+                // 获取注册中心地址;
+                // 比如:"zookeeper://119.29.148.121:2181"
                 String address = config.getAddress();
+
+                // 没有设置地址, 则设置为"0.0.0.0"
                 if (address == null || address.length() == 0) {
                     address = Constants.ANYHOST_VALUE;
                 }
+
+                // 从系统属性中获取注册中心地址;
+                // 从这里可以看出,系统属性的优先级是很高的,可以覆盖其他配置的地址;
                 String sysaddress = System.getProperty("dubbo.registry.address");
                 if (sysaddress != null && sysaddress.length() > 0) {
                     address = sysaddress;
                 }
+
+                // 有地址,并且地址不是"N/A", 才加载注册中心;
                 if (address.length() > 0 && !RegistryConfig.NO_AVAILABLE.equalsIgnoreCase(address)) {
                     Map<String, String> map = new HashMap<String, String>();
+
+                    // 把 application 中的getter方法和is方法的属性添加到map中;
                     appendParameters(map, application);
+
+                    // 把 registry 中的getter方法和is方法的属性添加到map中;
                     appendParameters(map, config);
+
+                    // 把 "path" -> "com.alibaba.dubbo.registry.RegistryService" 添加到 map中;
                     map.put("path", RegistryService.class.getName());
+
+                    // 把 "dubbo" -> "2.6.2" 添加到map中;(使用的dubbo版本号)
                     map.put("dubbo", Version.getProtocolVersion());
+
+                    // 把 "timestamp" -> "1532623527193" 添加到map中;(当前时间戳)
                     map.put(Constants.TIMESTAMP_KEY, String.valueOf(System.currentTimeMillis()));
+
                     if (ConfigUtils.getPid() > 0) {
+                        // 把 "pid" -> "51581" 添加到map中;(进程id)
                         map.put(Constants.PID_KEY, String.valueOf(ConfigUtils.getPid()));
                     }
                     if (!map.containsKey("protocol")) {
                         if (ExtensionLoader.getExtensionLoader(RegistryFactory.class).hasExtension("remote")) {
                             map.put("protocol", "remote");
                         } else {
+                            // 把 "protocol" -> "dubbo" 添加到map中;(默认协议)
                             map.put("protocol", "dubbo");
                         }
                     }
+
+                    // 拼装url;
+                    // 比如:"zookeeper://119.29.148.121:2181/com.alibaba.dubbo.registry.RegistryService
+                    // ?application=java-example-app&dubbo=2.6.2&pid=51581&timestamp=1532623611061"
                     List<URL> urls = UrlUtils.parseURLs(address, map);
                     for (URL url : urls) {
+
+                        // 添加注册中心协议到URL中;
+                        // 如:"zookeeper://119.29.148.121:2181/com.alibaba.dubbo.registry.RegistryService
+                        // ?application=java-example-app&dubbo=2.6.2&pid=51581&registry=zookeeper&timestamp=1532623611061"
                         url = url.addParameter(Constants.REGISTRY_KEY, url.getProtocol());
+
+                        // 设置URL协议;
+                        // 如:"registry://119.29.148.121:2181/com.alibaba.dubbo.registry.RegistryService
+                        // ?application=java-example-app&dubbo=2.6.2&pid=51581&registry=zookeeper&timestamp=1532623611061"
                         url = url.setProtocol(Constants.REGISTRY_PROTOCOL);
+
+                        // 需要暴露服务或者订阅服务,那么把URL加到需要注册的列表中;
                         if ((provider && url.getParameter(Constants.REGISTER_KEY, true))
                                 || (!provider && url.getParameter(Constants.SUBSCRIBE_KEY, true))) {
                             registryList.add(url);
@@ -198,6 +253,8 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
                 }
             }
         }
+
+        // 返回需要注册的列表;
         return registryList;
     }
 
@@ -248,10 +305,13 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
 
     protected void checkInterfaceAndMethods(Class<?> interfaceClass, List<MethodConfig> methods) {
         // interface cannot be null
+        // interface 属性不能为空;
         if (interfaceClass == null) {
             throw new IllegalStateException("interface not allow null!");
         }
+
         // to verify interfaceClass is an interface
+        // interface属性对应的类必须是接口;
         if (!interfaceClass.isInterface()) {
             throw new IllegalStateException("The interface class " + interfaceClass + " is not a interface!");
         }

@@ -49,10 +49,15 @@ public class QosProtocolWrapper implements Protocol {
 
     @Override
     public <T> Exporter<T> export(Invoker<T> invoker) throws RpcException {
+
         if (Constants.REGISTRY_PROTOCOL.equals(invoker.getUrl().getProtocol())) {
+            // 注册到远程的, 开启 qos 服务器; // TODO by archerda on 2018/7/27: 干啥的?
             startQosServer(invoker.getUrl());
+
+            // 调用 ProtocolListenerWrapper#invoke;
             return protocol.export(invoker);
         }
+        // 调用 ProtocolListenerWrapper#invoke;
         return protocol.export(invoker);
     }
 

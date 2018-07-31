@@ -39,41 +39,53 @@ public class ProviderConfig extends AbstractServiceConfig {
     private static final long serialVersionUID = 6913423882496634749L;
 
     // ======== protocol default values, it'll take effect when protocol's attributes are not set ========
+    // protocol默认值，如果protocol没有设置，则 provider 的配置有效；
 
     // service IP addresses (used when there are multiple network cards available)
+    // 服务提供者的ip，自动查找本机IP
     private String host;
 
     // service port
+    // 服务提供者的端口
     private Integer port;
 
     // context path
     private String contextpath;
 
     // thread pool
+    // 线程池类型，可选：fixed/cached
     private String threadpool;
 
     // thread pool size (fixed size)
+    // 线程池核心线程数（固定大小）
     private Integer threads;
 
     // IO thread pool size (fixed size)
+    // IO线程池大小（固定大小）
     private Integer iothreads;
 
     // thread pool queue length
+    // 线程池等待队列长度
     private Integer queues;
 
     // max acceptable connections
+    // 最大的可连接数
     private Integer accepts;
 
     // protocol codec
+    // 协议的编码方式，默认dubbo
     private String codec;
 
     // charset
+    // 字符集
     private String charset;
 
     // payload max length
+    // 请求及响应数据包大小限制，单位：字节
     private Integer payload;
 
     // buffer size
+    // 网络读写缓冲区大小
     private Integer buffer;
 
     // transporter
@@ -89,12 +101,15 @@ public class ProviderConfig extends AbstractServiceConfig {
     private String networker;
 
     // server impl
+    // 协议的服务器端实现类型，比如：dubbo协议的mina,netty等，http协议的jetty,servlet等
     private String server;
 
     // client impl
+    // 协议的客户端实现类型，比如：dubbo协议的mina,netty等
     private String client;
 
     // supported telnet commands, separated with comma.
+    // 所支持的telnet命令，多个命令用逗号分隔
     private String telnet;
 
     // command line prompt
