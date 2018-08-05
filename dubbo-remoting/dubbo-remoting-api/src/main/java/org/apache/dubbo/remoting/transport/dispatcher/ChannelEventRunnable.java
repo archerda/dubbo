@@ -52,8 +52,10 @@ public class ChannelEventRunnable implements Runnable {
 
     @Override
     public void run() {
+        // 处理消息接收事件;
         if (state == ChannelState.RECEIVED) {
             try {
+                // 调用DecodeHandler的received方法
                 handler.received(channel, message);
             } catch (Exception e) {
                 logger.warn("ChannelEventRunnable handle " + state + " operation error, channel is " + channel

@@ -74,9 +74,11 @@ public abstract class AbstractClient extends AbstractEndpoint implements Client 
         shutdown_timeout = url.getParameter(Constants.SHUTDOWN_TIMEOUT_KEY, Constants.DEFAULT_SHUTDOWN_TIMEOUT);
 
         // The default reconnection interval is 2s, 1800 means warning interval is 1 hour.
+        //默认重连间隔2s，1800表示1小时warning一次.
         reconnect_warning_period = url.getParameter("reconnect.waring.period", 1800);
 
         try {
+            //具体实现在子类中
             doOpen();
         } catch (Throwable t) {
             close();
@@ -86,6 +88,7 @@ public abstract class AbstractClient extends AbstractEndpoint implements Client 
         }
         try {
             // connect.
+            // 连接
             connect();
             if (logger.isInfoEnabled()) {
                 logger.info("Start " + getClass().getSimpleName() + " " + NetUtils.getLocalAddress() + " connect to the server " + getRemoteAddress());
@@ -254,14 +257,19 @@ public abstract class AbstractClient extends AbstractEndpoint implements Client 
 
     @Override
     public void send(Object message, boolean sent) throws RemotingException {
+        //重连
         if (send_reconnect && !isConnected()) {
             connect();
         }
+
+        //先获取Channel，是在NettyClient中实现的
         Channel channel = getChannel();
         //TODO Can the value returned by getChannel() be null? need improvement.
         if (channel == null || !channel.isConnected()) {
             throw new RemotingException(this, "message can not send, because channel is closed . url:" + getUrl());
         }
+
+        //channel是NettyChannel
         channel.send(message, sent);
     }
 
@@ -272,7 +280,10 @@ public abstract class AbstractClient extends AbstractEndpoint implements Client 
                 return;
             }
             initConnectStatusCheckCommand();
+
+            // 连接
             doConnect();
+
             if (!isConnected()) {
                 throw new RemotingException(this, "Failed connect to server " + getRemoteAddress() + " from " + getClass().getSimpleName() + " "
                         + NetUtils.getLocalHost() + " using dubbo version " + Version.getVersion()

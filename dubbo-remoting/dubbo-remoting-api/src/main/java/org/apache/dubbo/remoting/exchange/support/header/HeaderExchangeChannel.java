@@ -107,12 +107,22 @@ final class HeaderExchangeChannel implements ExchangeChannel {
             throw new RemotingException(this.getLocalAddress(), null, "Failed to send request " + request + ", cause: The channel " + this + " is closed!");
         }
         // create request.
+        //创建一个请求头
         Request req = new Request();
         req.setVersion(Version.getProtocolVersion());
         req.setTwoWay(true);
+        //这里request参数里面保存着
+        // methodName=sayHello,
+        // parameterTypes=[class java.lang.String],
+        // arguments=[Dubbo],
+        // attachments={path=com.github.archerda.dubbo.provider.HelloService, interface=com.github.archerda.dubbo.provider.HelloService,
+        // version=1.0,
+        // timeout=3000
         req.setData(request);
         DefaultFuture future = new DefaultFuture(channel, req, timeout);
         try {
+            //这里的channel是NettyClient
+            //发送请求, 调用AbstractPeer的send方法
             channel.send(req);
         } catch (RemotingException e) {
             future.cancel();

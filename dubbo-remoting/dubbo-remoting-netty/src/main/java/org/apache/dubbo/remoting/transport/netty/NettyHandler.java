@@ -83,10 +83,14 @@ public class NettyHandler extends SimpleChannelHandler {
         }
     }
 
+    // 服务提供者被调用入口
     @Override
     public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) throws Exception {
+        //获取channel
         NettyChannel channel = NettyChannel.getOrAddChannel(ctx.getChannel(), url, handler);
         try {
+            //这里handler是NettyServer
+            //调用 AbstractPeer的received方法
             handler.received(channel, e.getMessage());
         } finally {
             NettyChannel.removeChannelIfDisconnected(ctx.getChannel());

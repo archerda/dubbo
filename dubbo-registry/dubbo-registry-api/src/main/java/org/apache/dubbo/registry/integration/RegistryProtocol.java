@@ -167,6 +167,8 @@ public class RegistryProtocol implements Protocol {
         if (register) {
 
             // 开始注册到远程;
+            //调用远端注册中心的register方法进行服务注册
+            //若有消费者订阅此服务，ZK则推送消息让消费者引用此服务
             register(registryUrl, registedProviderUrl);
 
             ProviderConsumerRegTable.getProviderWrapper(originInvoker).setReg(true);
@@ -179,22 +181,31 @@ public class RegistryProtocol implements Protocol {
         final OverrideListener overrideSubscribeListener = new OverrideListener(overrideSubscribeUrl, originInvoker);
         overrideListeners.put(overrideSubscribeUrl, overrideSubscribeListener);
         // 订阅注册中心服务
+        // 提供者向注册中心订阅所有注册服务的覆盖配置
         registry.subscribe(overrideSubscribeUrl, overrideSubscribeListener);
 
         //Ensure that a new exporter instance is returned every time export
+        // 返回暴露后的Exporter给上层ServiceConfig进行缓存
         return new DestroyableExporter<T>(exporter, originInvoker, overrideSubscribeUrl, registedProviderUrl);
     }
 
     @SuppressWarnings("unchecked")
     private <T> ExporterChangeableWrapper<T> doLocalExport(final Invoker<T> originInvoker) {
+
+        /*
+        这里也就是非Registry类型的Invoker的导出过程。主要的步骤是将本地ip和20880端口打开，进行监听。最后包装成exporter返回
+         */
+
         String key = getCacheKey(originInvoker);
         ExporterChangeableWrapper<T> exporter = (ExporterChangeableWrapper<T>) bounds.get(key);
         if (exporter == null) {
             synchronized (bounds) {
                 exporter = (ExporterChangeableWrapper<T>) bounds.get(key);
                 if (exporter == null) {
+                    //得到一个Invoker代理，里面包含原来的Invoker
                     final Invoker<?> invokerDelegete = new InvokerDelegete<T>(originInvoker, getProviderUrl(originInvoker));
                     // 调用 DubboProtocol#export
+                    // 导出完之后，返回一个新的ExporterChangeableWrapper实例
                     exporter = new ExporterChangeableWrapper<T>((Exporter<T>) protocol.export(invokerDelegete), originInvoker);
                     bounds.put(key, exporter);
                 }
@@ -300,21 +311,38 @@ public class RegistryProtocol implements Protocol {
     @Override
     @SuppressWarnings("unchecked")
     public <T> Invoker<T> refer(Class<T> type, URL url) throws RpcException {
+        // 将url 从 registry://119.29.148.121:2181/com.alibaba.dubbo.registry.RegistryService?application=consumer-of-java-example-app&dubbo=2.6.2&pid=11117&refer=application%3Dconsumer-of-java-example-app%26dubbo%3D2.6.2%26interface%3Dcom.github.archerda.dubbo.provider.HelloService%26methods%3DsayHello%26pid%3D11117%26register.ip%3D192.168.2.101%26revision%3D1.0%26side%3Dconsumer%26timestamp%3D1533056856399%26version%3D1.0&registry=zookeeper&timestamp=1533056856492
+        // 变为 zookeeper://119.29.148.121:2181/com.alibaba.dubbo.registry.RegistryService?application=consumer-of-java-example-app&dubbo=2.6.2&pid=11117&refer=application%3Dconsumer-of-java-example-app%26dubbo%3D2.6.2%26interface%3Dcom.github.archerda.dubbo.provider.HelloService%26methods%3DsayHello%26pid%3D11117%26register.ip%3D192.168.2.101%26revision%3D1.0%26side%3Dconsumer%26timestamp%3D1533056856399%26version%3D1.0&timestamp=1533056856492
         url = url.setProtocol(url.getParameter(Constants.REGISTRY_KEY, Constants.DEFAULT_REGISTRY)).removeParameter(Constants.REGISTRY_KEY);
+
+        // 获取注册中心 [ZookeeperRegistry]
+        //先连接注册中心，把消费者注册到注册中心
+        // 调用 org.apache.dubbo.registry.support.AbstractRegistryFactory.getRegistry
         Registry registry = registryFactory.getRegistry(url);
+
+        //判断引用是否是注册中心RegistryService，如果是直接返回刚得到的注册中心服务
         if (RegistryService.class.equals(type)) {
             return proxyFactory.getInvoker((T) registry, type, url);
         }
 
         // group="a,b" or group="*"
+        // 以下是普通服务，需要进入注册中心和集群下面的逻辑
+        // group="a,b" or group="*"
+        // 获取ref的各种属性
         Map<String, String> qs = StringUtils.parseQueryString(url.getParameterAndDecoded(Constants.REFER_KEY));
+
+        //获取分组属性
         String group = qs.get(Constants.GROUP_KEY);
+        //先判断引用服务是否需要合并不同实现的返回结果
         if (group != null && group.length() > 0) {
             if ((Constants.COMMA_SPLIT_PATTERN.split(group)).length > 1
                     || "*".equals(group)) {
+                //使用默认的分组聚合集群策略
                 return doRefer(getMergeableCluster(), registry, type, url);
             }
         }
+        //选择配置的集群策略（cluster="failback"）或者默认策略
+        //继续看ref方法中最后一步，服务的引用，返回的是一个Invoker
         return doRefer(cluster, registry, type, url);
     }
 
@@ -323,22 +351,46 @@ public class RegistryProtocol implements Protocol {
     }
 
     private <T> Invoker<T> doRefer(Cluster cluster, Registry registry, Class<T> type, URL url) {
+        //初始化Directory
+            //组装Directory，可以看成一个消费端的List，可以随着注册中心的消息推送而动态的变化服务的Invoker
+            //封装了所有服务真正引用逻辑，覆盖配置，路由规则等逻辑
+        //初始化时只需要向注册中心发起订阅请求，其他逻辑均是异步处理，包括服务的引用等
+        //缓存接口所有的提供者端Invoker以及注册中心接口相关的配置等
         RegistryDirectory<T> directory = new RegistryDirectory<T>(type, url);
         directory.setRegistry(registry);
         directory.setProtocol(protocol);
         // all attributes of REFER_KEY
         Map<String, String> parameters = new HashMap<String, String>(directory.getUrl().getParameters());
+
+        // subscribeUrl="consumer://192.168.2.101/com.github.archerda.dubbo.provider.HelloService?application
+        // =consumer-of-java-example-app&dubbo=2.6.2&interface=com.github.archerda.dubbo.provider.HelloService&methods
+        // =sayHello&pid=11117&revision=1.0&side=consumer&timestamp=1533056856399&version=1.0"
         URL subscribeUrl = new URL(Constants.CONSUMER_PROTOCOL, parameters.remove(Constants.REGISTER_IP_KEY), 0, type.getName(), parameters);
+
         if (!Constants.ANY_VALUE.equals(url.getServiceInterface())
                 && url.getParameter(Constants.REGISTER_KEY, true)) {
+
+            //到注册中心注册服务
+            //此处 registry 是上面一步获得的registry，即是ZookeeperRegistry，包含zkClient的实例
+            //会先经过AbstractRegistry的处理，然后经过 FailbackRegistry 的处理（解析在下面）
             registry.register(subscribeUrl.addParameters(Constants.CATEGORY_KEY, Constants.CONSUMERS_CATEGORY,
                     Constants.CHECK_KEY, String.valueOf(false)));
         }
+
+        /*
+        消费者自己注册到注册中心之后，接着是订阅服务提供者，directory.subscribe()：
+         */
+
+        //订阅服务
+        //有服务提供的时候，注册中心会推送服务消息给消费者，消费者再进行服务的引用。
         directory.subscribe(subscribeUrl.addParameter(Constants.CATEGORY_KEY,
                 Constants.PROVIDERS_CATEGORY
                         + "," + Constants.CONFIGURATORS_CATEGORY
                         + "," + Constants.ROUTERS_CATEGORY));
 
+        //服务的引用与变更全部由Directory异步完成
+        //集群策略会将Directory伪装成一个Invoker返回
+        //合并所有相同的invoker [默认使用 FailoverCluster ]
         Invoker invoker = cluster.join(directory);
         ProviderConsumerRegTable.registerConsumer(invoker, url, subscribeUrl, directory);
         return invoker;

@@ -35,6 +35,9 @@ public class InvokerInvocationHandler implements InvocationHandler {
         this.invoker = handler;
     }
 
+    //proxy是代理的真实对象
+    //method调用真实对象的方法
+    //args调用真实对象的方法的参数
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
         String methodName = method.getName();
@@ -61,12 +64,15 @@ public class InvokerInvocationHandler implements InvocationHandler {
             invocation.setAttachment(Constants.FUTURE_GENERATED_KEY, "true");
             invocation.setAttachment(Constants.ASYNC_KEY, "true");
         } else {
+            // RpcInvocation是会话域,它持有调用过程中的变量，比如方法名，参数类型, 参数值等
             invocation = new RpcInvocation(method, args);
             if (RpcUtils.hasFutureReturnType(method)) {
                 invocation.setAttachment(Constants.FUTURE_RETURNTYPE_KEY, "true");
                 invocation.setAttachment(Constants.ASYNC_KEY, "true");
             }
         }
+
+        //invoker是MockClusterInvoker
         return invoker.invoke(invocation).recreate();
     }
 

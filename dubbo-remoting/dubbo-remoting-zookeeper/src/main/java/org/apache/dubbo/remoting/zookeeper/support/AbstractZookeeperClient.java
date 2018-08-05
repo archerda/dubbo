@@ -52,18 +52,41 @@ public abstract class AbstractZookeeperClient<TargetChildListener> implements Zo
 
     @Override
     public void create(String path, boolean ephemeral) {
+        // 消费者时, path="/dubbo/com.github.archerda.dubbo.provider.HelloService/consumers/
+        // consumer%3A%2F%2F192.168.2.101%2Fcom.github.archerda.dubbo.provider.HelloService%3Fapplication%3Dconsumer-of
+        // -java-example-app%26category%3Dconsumers%26check%3Dfalse%26dubbo%3D2.6.2%26interface%3Dcom.github.archerda.du
+        // bbo.provider.HelloService%26methods%3DsayHello%26pid%3D11117%26revision%3D1.0%26side%3Dconsumer%26
+        // timestamp%3D1533056856399%26version%3D1.0"
         if (!ephemeral) {
             if (checkExists(path)) {
                 return;
             }
         }
+
+        // 去除path中的最后一个"/";
         int i = path.lastIndexOf('/');
         if (i > 0) {
             create(path.substring(0, i), false);
         }
+
+        // dynamic=false 表示该数据为持久数据，当注册方退出时，数据依然保存在注册中心
         if (ephemeral) {
+            //创建临时的节点(默认)
             createEphemeral(path);
+
+            /*
+            经过这里之后, zk就有了以下节点:
+            消费者:
+                /dubbo
+                    /com.github.archerda.dubbo.provider.HelloService
+                        /consumers
+                            /consumer%3A%2F%2F192.168.2.101%2Fcom.github.archerda.dubbo.provider.HelloService%3Fapplicat
+                            ion%3Dconsumer-of-java-example-app%26category%3Dconsumers%26check%3Dfalse%26dubbo%3D2.6.2%26
+                            interface%3Dcom.github.archerda.dubbo.provider.HelloService%26methods%3DsayHello%26pid%3D111
+                            17%26revision%3D1.0%26side%3Dconsumer%26timestamp%3D1533056856399%26version%3D1.0
+             */
         } else {
+            //创建持久的节点
             createPersistent(path);
         }
     }

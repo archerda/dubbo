@@ -69,9 +69,13 @@ public class MockClusterInvoker<T> implements Invoker<T> {
     public Result invoke(Invocation invocation) throws RpcException {
         Result result = null;
 
+        //获取mock属性的值，我们没有配置，默认false
         String value = directory.getUrl().getMethodParameter(invocation.getMethodName(), Constants.MOCK_KEY, Boolean.FALSE.toString()).trim();
         if (value.length() == 0 || value.equalsIgnoreCase("false")) {
             //no mock
+            // 调用远程;
+            // invoker是 FailoverClusterInvoker;
+            // 会首先进入AbstractClusterInvoker的invoke方法;
             result = this.invoker.invoke(invocation);
         } else if (value.startsWith("force")) {
             if (logger.isWarnEnabled()) {

@@ -73,6 +73,7 @@ public class DubboInvoker<T> extends AbstractInvoker<T> {
         inv.setAttachment(Constants.PATH_KEY, getUrl().getPath());
         inv.setAttachment(Constants.VERSION_KEY, version);
 
+        //在初始化的时候，引用服务的过程中会保存一个连接到服务端的Client
         ExchangeClient currentClient;
         if (clients.length == 1) {
             currentClient = clients[0];
@@ -80,16 +81,25 @@ public class DubboInvoker<T> extends AbstractInvoker<T> {
             currentClient = clients[index.getAndIncrement() % clients.length];
         }
         try {
+
+            //异步标志
             boolean isAsync = RpcUtils.isAsync(getUrl(), invocation);
             boolean isAsyncFuture = RpcUtils.isGeneratedFuture(inv) || RpcUtils.isFutureReturnType(inv);
+
+            //单向标志
             boolean isOneway = RpcUtils.isOneway(getUrl(), invocation);
+
+            // 获取超时时间
             int timeout = getUrl().getMethodParameter(methodName, Constants.TIMEOUT_KEY, Constants.DEFAULT_TIMEOUT);
+
+            //单向的，反送完不管结果
             if (isOneway) {
                 boolean isSent = getUrl().getMethodParameter(methodName, Constants.SENT_KEY, false);
                 currentClient.send(inv, isSent);
                 RpcContext.getContext().setFuture(null);
                 return new RpcResult();
             } else if (isAsync) {
+                //异步的，发送完需要得到Future
                 ResponseFuture future = currentClient.request(inv, timeout);
                 // For compatibility
                 FutureAdapter<Object> futureAdapter = new FutureAdapter<>(future);
@@ -104,7 +114,9 @@ public class DubboInvoker<T> extends AbstractInvoker<T> {
                 }
                 return result;
             } else {
+                //同步调用，我们这里使用的这种方式
                 RpcContext.getContext().setFuture(null);
+                // 调用 ReferenceCountExchangeClient#request;实际上调用HeaderExchangeClient的request方法
                 return (Result) currentClient.request(inv, timeout).get();
             }
         } catch (TimeoutException e) {

@@ -428,9 +428,11 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
          */
 
         // 获取需要注册的列表;
+        // 加载所有的注册中心，因为我们暴露服务需要注册到注册中心中去
         List<URL> registryURLs = loadRegistries(true);
 
         // 根据不同的注册中心和协议, 暴露服务;
+        // 根据配置的所有协议和注册中心url分别进行导出
         for (ProtocolConfig protocolConfig : protocols) {
             doExportUrlsFor1Protocol(protocolConfig, registryURLs);
         }

@@ -155,7 +155,13 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
     }
 
     public void subscribe(URL url) {
+        // url = "consumer://192.168.2.101/com.github.archerda.dubbo.provider.HelloService?application=consumer-of-java-
+        // example-app&category=providers,configurators,routers&dubbo=2.6.2&interface=com.github.archerda.dubbo.provider
+        // .HelloService&methods=sayHello&pid=11117&revision=1.0&side=consumer&timestamp=1533056856399&version=1.0"
+
+        //设置消费者url
         setConsumerUrl(url);
+        //这里的registry是ZookeeperRegistry
         registry.subscribe(url, this);
     }
 
@@ -201,10 +207,16 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
             }
         }
         // configurators
+        // configurators 更新缓存的服务提供方配置
         if (configuratorUrls != null && !configuratorUrls.isEmpty()) {
+            // configuratorUrls =
+            //      empty://192.168.2.101/com.github.archerda.dubbo.provider.HelloService?application=consumer-of-java-
+            // example-app&category=configurators&dubbo=2.6.2&interface=com.github.archerda.dubbo.provider.HelloService&
+            // methods=sayHello&pid=11466&revision=1.0&side=consumer&timestamp=1533059101053&version=1.0
             this.configurators = toConfigurators(configuratorUrls);
         }
         // routers
+        // routers 更新缓存的路由规则配置
         if (routerUrls != null && !routerUrls.isEmpty()) {
             List<Router> routers = toRouters(routerUrls);
             if (routers != null) { // null - do nothing
@@ -213,13 +225,14 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
         }
         List<Configurator> localConfigurators = this.configurators; // local reference
         // merge override parameters
+        // 合并override参数
         this.overrideDirectoryUrl = directoryUrl;
         if (localConfigurators != null && !localConfigurators.isEmpty()) {
             for (Configurator configurator : localConfigurators) {
                 this.overrideDirectoryUrl = configurator.configure(overrideDirectoryUrl);
             }
         }
-        // providers
+        // providers 重建invoker实例
         refreshInvoker(invokerUrls);
     }
 
@@ -232,35 +245,65 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
      * @param invokerUrls this parameter can't be null
      */
     // TODO: 2017/8/31 FIXME The thread pool should be used to refresh the address, otherwise the task may be accumulated.
+     /*
+    根据invokerURL列表转换为invoker列表。转换规则如下：
+    1.如果url已经被转换为invoker，则不在重新引用，直接从缓存中获取，注意如果url中任何一个参数变更也会重新引用
+    2.如果传入的invoker列表不为空，则表示最新的invoker列表
+    3.如果传入的invokerUrl列表是空，则表示只是下发的override规则或route规则，需要重新交叉对比，决定是否需要重新引用。
+     */
     private void refreshInvoker(List<URL> invokerUrls) {
+        /*
+        invokerUrls =
+        0 = dubbo://192.168.2.101:20880/com.github.archerda.dubbo.provider.HelloService?anyhost=true&application=java-ex
+        ample-app&default.retries=0&default.timeout=3000&dubbo=2.6.2&generic=false&interface=com.github.archerda.dubbo.p
+        rovider.HelloService&methods=sayHello&pid=10975&revision=1.0&side=provider&timestamp=1533055908018&version=1.0
+         */
+
+        // 协议是 empty
         if (invokerUrls != null && invokerUrls.size() == 1 && invokerUrls.get(0) != null
                 && Constants.EMPTY_PROTOCOL.equals(invokerUrls.get(0).getProtocol())) {
+            // 禁止访问
             this.forbidden = true; // Forbid to access
+            // 置空列表
             this.methodInvokerMap = null; // Set the method invoker map to null
+            // 关闭所有Invoker
             destroyAllInvokers(); // Close all invokers
-        } else {
+        }
+        // 协议不是 empty, 比如dubbo
+        else {
+            // 允许访问
             this.forbidden = false; // Allow to access
             Map<String, Invoker<T>> oldUrlInvokerMap = this.urlInvokerMap; // local reference
             if (invokerUrls.isEmpty() && this.cachedInvokerUrls != null) {
                 invokerUrls.addAll(this.cachedInvokerUrls);
             } else {
                 this.cachedInvokerUrls = new HashSet<URL>();
+                //缓存invokerUrls列表，便于交叉对比
                 this.cachedInvokerUrls.addAll(invokerUrls);//Cached invoker urls, convenient for comparison
             }
             if (invokerUrls.isEmpty()) {
                 return;
             }
+
+            //会重新走一遍服务的引用过程
+            //给每个提供者创建一个Invoker
+
+            // 将URL列表转成Invoker列表
             Map<String, Invoker<T>> newUrlInvokerMap = toInvokers(invokerUrls);// Translate url list to Invoker map
+            // 换方法名映射Invoker列表
             Map<String, List<Invoker<T>>> newMethodInvokerMap = toMethodInvokers(newUrlInvokerMap); // Change method name to map Invoker Map
             // state change
             // If the calculation is wrong, it is not processed.
+            //如果计算错误，则不进行处理.
             if (newUrlInvokerMap == null || newUrlInvokerMap.size() == 0) {
                 logger.error(new IllegalStateException("urls to invokers error .invokerUrls.size :" + invokerUrls.size() + ", invoker.size :0. urls :" + invokerUrls.toString()));
                 return;
             }
+            //服务提供者Invoker保存在这个map中
             this.methodInvokerMap = multiGroup ? toMergeMethodInvokerMap(newMethodInvokerMap) : newMethodInvokerMap;
             this.urlInvokerMap = newUrlInvokerMap;
             try {
+                // 关闭未使用的Invoker
                 destroyUnusedInvokers(oldUrlInvokerMap, newUrlInvokerMap); // Close the unused Invoker
             } catch (Exception e) {
                 logger.warn("destroyUnusedInvokers error. ", e);
@@ -344,6 +387,12 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
         String queryProtocols = this.queryMap.get(Constants.PROTOCOL_KEY);
         for (URL providerUrl : urls) {
             // If protocol is configured at the reference side, only the matching protocol is selected
+            //此时url是dubbo://192.168.110.197:20880/dubbo.common.hello.service.HelloService?anyhost=true&
+            //application=dubbo-provider&application.version=1.0&dubbo=2.5.3&environment=product&
+            //interface=dubbo.common.hello.service.HelloService&methods=sayHello&organization=china&
+            //owner=cheng.xi&pid=5631&side=provider&timestamp=1489367571986
+            //从注册中心获取到的携带提供者信息的url
+            //如果reference端配置了protocol，则只选择匹配的protocol
             if (queryProtocols != null && queryProtocols.length() > 0) {
                 boolean accept = false;
                 String[] acceptProtocols = queryProtocols.split(",");
@@ -367,12 +416,15 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
             }
             URL url = mergeUrl(providerUrl);
 
+            // URL参数是排序的
             String key = url.toFullString(); // The parameter urls are sorted
+            // 重复URL
             if (keys.contains(key)) { // Repeated url
                 continue;
             }
             keys.add(key);
             // Cache key is url that does not merge with consumer side parameters, regardless of how the consumer combines parameters, if the server url changes, then refer again
+            // 缓存key为没有合并消费端参数的URL，不管消费端如何合并参数，如果服务端URL发生变化，则重新refer
             Map<String, Invoker<T>> localUrlInvokerMap = this.urlInvokerMap; // local reference
             Invoker<T> invoker = localUrlInvokerMap == null ? null : localUrlInvokerMap.get(key);
             if (invoker == null) { // Not in the cache, refer again
@@ -384,11 +436,13 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
                         enabled = url.getParameter(Constants.ENABLED_KEY, true);
                     }
                     if (enabled) {
+                        //根据扩展点加载机制，这里使用的protocol是DubboProtocol, 重新refer
                         invoker = new InvokerDelegate<T>(protocol.refer(serviceType, url), url, providerUrl);
                     }
                 } catch (Throwable t) {
                     logger.error("Failed to refer invoker for interface:" + serviceType + ",url:(" + url + ")" + t.getMessage(), t);
                 }
+                // 将新的引用放入缓存
                 if (invoker != null) { // Put new invoker in cache
                     newUrlInvokerMap.put(key, invoker);
                 }

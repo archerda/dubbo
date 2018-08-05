@@ -57,8 +57,10 @@ public class HeaderExchangeHandler implements ChannelHandlerDelegate {
         this.handler = handler;
     }
 
-    static void handleResponse(Channel channel, Response response) throws RemotingException {
+    static void handleResponse(Channel channel, Response response) throws RemotingETxception {
         if (response != null && !response.isHeartbeat()) {
+            //设置response到消费者请求的Future中，以供消费者通过DefaultFuture.get()取得提供者的响应，此为同步转异步重要一步，
+            // 且请求超时也由DefaultFuture控制。
             DefaultFuture.received(channel, response);
         }
     }
@@ -93,13 +95,19 @@ public class HeaderExchangeHandler implements ChannelHandlerDelegate {
             return;
         }
         // find handler by message class.
+        // 根据消息类型获取handler
         Object msg = req.getData();
         try {
             // handle data.
+            //处理请求数据，handler是DubboProtocol中的 ExchangeHandlerAdapter
             CompletableFuture<Object> future = handler.reply(channel, msg);
+
             if (future.isDone()) {
+                //构造响应信息
                 res.setStatus(Response.OK);
                 res.setResult(future.get());
+                //NettyChannel，发送响应信息
+                //先经过 AbstractPeer
                 channel.send(res);
                 return;
             }
@@ -185,25 +193,37 @@ public class HeaderExchangeHandler implements ChannelHandlerDelegate {
         channel.setAttribute(KEY_READ_TIMESTAMP, System.currentTimeMillis());
         final ExchangeChannel exchangeChannel = HeaderExchangeChannel.getOrAddChannel(channel);
         try {
+            //request类型的消息
             if (message instanceof Request) {
                 // handle request.
                 Request request = (Request) message;
                 if (request.isEvent()) {
+                    //处理心跳
                     handlerEvent(channel, request);
-                } else {
+                }
+                //正常的请求
+                else {
+                    //需要返回结果
                     if (request.isTwoWay()) {
                         handleRequest(exchangeChannel, request);
-                    } else {
+                    }
+                    //不需要返回的处理
+                    else {
                         handler.received(exchangeChannel, request.getData());
                     }
                 }
-            } else if (message instanceof Response) {
+            }
+            //response类型的消息
+            else if (message instanceof Response) {
+                // 处理请求的响应信息
                 handleResponse(channel, (Response) message);
             } else if (message instanceof String) {
                 if (isClientSide(channel)) {
                     Exception e = new Exception("Dubbo client can not supported string message: " + message + " in channel: " + channel + ", url: " + channel.getUrl());
                     logger.error(e.getMessage(), e);
-                } else {
+                }
+                //telnet类型
+                else {
                     String echo = handler.telnet(channel, (String) message);
                     if (echo != null && echo.length() > 0) {
                         channel.send(echo);

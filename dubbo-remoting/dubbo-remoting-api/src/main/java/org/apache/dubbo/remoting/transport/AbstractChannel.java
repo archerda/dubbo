@@ -32,6 +32,7 @@ public abstract class AbstractChannel extends AbstractPeer implements Channel {
 
     @Override
     public void send(Object message, boolean sent) throws RemotingException {
+        //经过AbstractChannel的send方法处理，只是判断是否关闭了
         if (isClosed()) {
             throw new RemotingException(this, "Failed to send message "
                     + (message == null ? "" : message.getClass().getName()) + ":" + message

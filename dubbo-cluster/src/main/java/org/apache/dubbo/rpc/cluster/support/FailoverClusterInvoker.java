@@ -53,29 +53,47 @@ public class FailoverClusterInvoker<T> extends AbstractClusterInvoker<T> {
     @SuppressWarnings({"unchecked", "rawtypes"})
     public Result doInvoke(Invocation invocation, final List<Invoker<T>> invokers, LoadBalance loadbalance) throws RpcException {
         List<Invoker<T>> copyinvokers = invokers;
+
+        //检查invokers是否为空
         checkInvokers(copyinvokers, invocation);
+
+        //重试次数
         int len = getUrl().getMethodParameter(invocation.getMethodName(), Constants.RETRIES_KEY, Constants.DEFAULT_RETRIES) + 1;
         if (len <= 0) {
             len = 1;
         }
+
         // retry loop.
         RpcException le = null; // last exception.
+
+        //已经调用过的invoker
         List<Invoker<T>> invoked = new ArrayList<Invoker<T>>(copyinvokers.size()); // invoked invokers.
         Set<String> providers = new HashSet<String>(len);
         for (int i = 0; i < len; i++) {
             //Reselect before retry to avoid a change of candidate `invokers`.
             //NOTE: if `invokers` changed, then `invoked` also lose accuracy.
+            //重试时，进行重新选择，避免重试时invoker列表已发生变化.
+            //注意：如果列表发生了变化，那么invoked判断会失效，因为invoker示例已经改变
             if (i > 0) {
                 checkWhetherDestroyed();
                 copyinvokers = list(invocation);
                 // check again
+                //重新检查一下
                 checkInvokers(copyinvokers, invocation);
             }
+
+            //使用负载均衡选择invoker.（负载均衡咱先不做解释）
             Invoker<T> invoker = select(loadbalance, invocation, copyinvokers, invoked);
+
+            //添加到以调用过的列表中
             invoked.add(invoker);
+
             RpcContext.getContext().setInvokers((List) invoked);
             try {
+                //开始调用，返回结果
+                // 会首先进入InvokerWrapper，然后进入ListenerInvokerWrapper的invoke方法，接着进入AbstractInvoker的invoke;
                 Result result = invoker.invoke(invocation);
+
                 if (le != null && logger.isWarnEnabled()) {
                     logger.warn("Although retry the method " + invocation.getMethodName()
                             + " in the service " + getInterface().getName()

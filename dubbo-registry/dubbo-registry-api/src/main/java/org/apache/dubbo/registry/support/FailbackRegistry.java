@@ -64,7 +64,9 @@ public abstract class FailbackRegistry extends AbstractRegistry {
     private final int retryPeriod;
 
     public FailbackRegistry(URL url) {
+        // 调用父类;
         super(url);
+
         this.retryPeriod = url.getParameter(Constants.REGISTRY_RETRY_PERIOD_KEY, Constants.DEFAULT_REGISTRY_RETRY_PERIOD);
         this.retryFuture = retryExecutor.scheduleWithFixedDelay(new Runnable() {
             @Override
@@ -142,6 +144,7 @@ public abstract class FailbackRegistry extends AbstractRegistry {
             Throwable t = e;
 
             // If the startup detection is opened, the Exception is thrown directly.
+            // 如果开启了启动时检测，则直接抛出异常
             boolean check = getUrl().getParameter(Constants.CHECK_KEY, true)
                     && url.getParameter(Constants.CHECK_KEY, true)
                     && !Constants.CONSUMER_PROTOCOL.equals(url.getProtocol());
@@ -156,6 +159,7 @@ public abstract class FailbackRegistry extends AbstractRegistry {
             }
 
             // Record a failed registration request to a failed list, retry regularly
+            // 将失败的注册请求记录到失败列表，定时重试
             failedRegistered.add(url);
         }
     }
@@ -196,6 +200,7 @@ public abstract class FailbackRegistry extends AbstractRegistry {
         removeFailedSubscribed(url, listener);
         try {
             // Sending a subscription request to the server side
+            // 向服务器端发送订阅请求
             doSubscribe(url, listener);
         } catch (Exception e) {
             Throwable t = e;
@@ -259,6 +264,25 @@ public abstract class FailbackRegistry extends AbstractRegistry {
 
     @Override
     protected void notify(URL url, NotifyListener listener, List<URL> urls) {
+        /*
+        url = "consumer://192.168.2.101/com.github.archerda.dubbo.provider.HelloService?application=consumer-of-java-
+        example-app&category=providers,configurators,routers&dubbo=2.6.2&interface=com.github.archerda.dubbo.provider
+        .HelloService&methods=sayHello&pid=11466&revision=1.0&side=consumer&timestamp=1533059101053&version=1.0"
+
+        listener = [RegistryDirectory]
+
+        urls =
+        [0] = dubbo://192.168.2.101:20880/com.github.archerda.dubbo.provider.HelloService?anyhost=true&application=java-exam
+        ple-app&default.retries=0&default.timeout=3000&dubbo=2.6.2&generic=false&interface=com.github.archerda.dubbo.pro
+        vider.HelloService&methods=sayHello&pid=10975&revision=1.0&side=provider&timestamp=1533055908018&version=1.0
+        [1] = empty://192.168.2.101/com.github.archerda.dubbo.provider.HelloService?application=consumer-of-java-example-app
+        &category=configurators&dubbo=2.6.2&interface=com.github.archerda.dubbo.provider.HelloService&methods=sayHello&p
+        id=11466&revision=1.0&side=consumer&timestamp=1533059101053&version=1.0
+        [2] = empty://192.168.2.101/com.github.archerda.dubbo.provider.HelloService?application=consumer-of-java-example-app
+        &category=routers&dubbo=2.6.2&interface=com.github.archerda.dubbo.provider.HelloService&methods=sayHello&pid=114
+        66&revision=1.0&side=consumer&timestamp=1533059101053&version=1.0
+         */
+
         if (url == null) {
             throw new IllegalArgumentException("notify url == null");
         }
@@ -269,6 +293,7 @@ public abstract class FailbackRegistry extends AbstractRegistry {
             doNotify(url, listener, urls);
         } catch (Exception t) {
             // Record a failed registration request to a failed list, retry regularly
+            // 将失败的通知请求记录到失败列表，定时重试
             Map<NotifyListener, List<URL>> listeners = failedNotified.get(url);
             if (listeners == null) {
                 failedNotified.putIfAbsent(url, new ConcurrentHashMap<NotifyListener, List<URL>>());
@@ -280,6 +305,7 @@ public abstract class FailbackRegistry extends AbstractRegistry {
     }
 
     protected void doNotify(URL url, NotifyListener listener, List<URL> urls) {
+        //父类实现
         super.notify(url, listener, urls);
     }
 

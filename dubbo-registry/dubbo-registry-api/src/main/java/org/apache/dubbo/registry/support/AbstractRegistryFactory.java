@@ -93,6 +93,8 @@ public abstract class AbstractRegistryFactory implements RegistryFactory {
             if (registry != null) {
                 return registry;
             }
+            // 创建注册中心
+            // 调用 org.apache.dubbo.registry.zookeeper.ZookeeperRegistryFactory.createRegistry
             registry = createRegistry(url);
             if (registry == null) {
                 throw new IllegalStateException("Can not create registry " + url);

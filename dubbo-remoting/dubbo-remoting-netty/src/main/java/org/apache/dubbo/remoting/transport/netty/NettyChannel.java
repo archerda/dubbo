@@ -97,20 +97,25 @@ final class NettyChannel extends AbstractChannel {
         boolean success = true;
         int timeout = 0;
         try {
+            //交给netty处理
             ChannelFuture future = channel.write(message);
             if (sent) {
                 timeout = getUrl().getPositiveParameter(Constants.TIMEOUT_KEY, Constants.DEFAULT_TIMEOUT);
+                // 在timeout时间内, 等待获取结果;
                 success = future.await(timeout);
             }
+            // 获取异常;
             Throwable cause = future.getCause();
             if (cause != null) {
                 throw cause;
             }
         } catch (Throwable e) {
+            // 提供者跑出了异常, 抛出;
             throw new RemotingException(this, "Failed to send message " + message + " to " + getRemoteAddress() + ", cause: " + e.getMessage(), e);
         }
 
         if (!success) {
+            // 超时
             throw new RemotingException(this, "Failed to send message " + message + " to " + getRemoteAddress()
                     + "in timeout(" + timeout + "ms) limit");
         }

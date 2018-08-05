@@ -57,7 +57,9 @@ public class ZookeeperRegistry extends FailbackRegistry {
     private final ZookeeperClient zkClient;
 
     public ZookeeperRegistry(URL url, ZookeeperTransporter zookeeperTransporter) {
+        // 调用父类
         super(url);
+
         if (url.isAnyHost()) {
             throw new IllegalStateException("registry address == null");
         }
@@ -120,6 +122,7 @@ public class ZookeeperRegistry extends FailbackRegistry {
             // %26default.retries%3D0%26default.timeout%3D3000%26dubbo%3D2.6.2%26generic%3Dfalse%26interface
             // %3Dcom.github.archerda.dubbo.provider.HelloService%26methods%3DsayHello%26pid%3D55699%26side%3Dprovider
             // %26timestamp%3D1532671765085"
+            // 直接调用create，在AbstractZookeeperClient类中
             zkClient.create(toUrlPath(url), url.getParameter(Constants.DYNAMIC_KEY, true));
         } catch (Throwable e) {
             throw new RpcException("Failed to register " + url + " to zookeeper " + getUrl() + ", cause: " + e.getMessage(), e);
@@ -151,6 +154,7 @@ public class ZookeeperRegistry extends FailbackRegistry {
                     zkListeners.putIfAbsent(url, new ConcurrentHashMap<NotifyListener, ChildListener>());
                     listeners = zkListeners.get(url);
                 }
+
                 ChildListener zkListener = listeners.get(listener);
                 if (zkListener == null) {
                     listeners.putIfAbsent(listener, new ChildListener() {
@@ -168,6 +172,7 @@ public class ZookeeperRegistry extends FailbackRegistry {
                     });
                     zkListener = listeners.get(listener);
                 }
+
                 zkClient.create(root, false);
                 List<String> services = zkClient.addChildListener(root, zkListener);
                 if (services != null && !services.isEmpty()) {
@@ -181,11 +186,16 @@ public class ZookeeperRegistry extends FailbackRegistry {
             } else {
                 List<URL> urls = new ArrayList<URL>();
                 for (String path : toCategoriesPath(url)) {
+                    // path = "/dubbo/com.github.archerda.dubbo.provider.HelloService/providers"
+                    // path = "/dubbo/com.github.archerda.dubbo.provider.HelloService/configurators"
+                    // path = "/dubbo/com.github.archerda.dubbo.provider.HelloService/routers"
                     ConcurrentMap<NotifyListener, ChildListener> listeners = zkListeners.get(url);
                     if (listeners == null) {
                         zkListeners.putIfAbsent(url, new ConcurrentHashMap<NotifyListener, ChildListener>());
                         listeners = zkListeners.get(url);
                     }
+
+                    //将zkClient的事件IZkChildListener转换到registry事件NotifyListener
                     ChildListener zkListener = listeners.get(listener);
                     if (zkListener == null) {
                         listeners.putIfAbsent(listener, new ChildListener() {
@@ -196,12 +206,21 @@ public class ZookeeperRegistry extends FailbackRegistry {
                         });
                         zkListener = listeners.get(listener);
                     }
+
+                    //创建三个节点监听
+                    // /dubbo/dubbo.common.hello.service.HelloService/providers/
+                    // /dubbo/dubbo.common.hello.service.HelloService/configurators/
+                    // /dubbo/dubbo.common.hello.service.HelloService/routers/
+                    // 上面三个路径会被消费者端监听，当提供者，配置，路由发生变化之后，
+                    // 注册中心会通知消费者刷新本地缓存。
                     zkClient.create(path, false);
                     List<String> children = zkClient.addChildListener(path, zkListener);
                     if (children != null) {
                         urls.addAll(toUrlsWithEmpty(url, path, children));
                     }
                 }
+
+                // 服务订阅完成之后，接着就是notify(url, listener, urls);：
                 notify(url, listener, urls);
             }
         } catch (Throwable e) {

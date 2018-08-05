@@ -61,6 +61,8 @@ public class NettyClient extends AbstractClient {
 
     @Override
     protected void doOpen() throws Throwable {
+        // 这里是Netty3中的客户端连接的一些常规步骤，暂不做具体解析
+
         NettyHelper.setNettyLoggerFactory();
         bootstrap = new ClientBootstrap(channelFactory);
         // config
@@ -85,6 +87,10 @@ public class NettyClient extends AbstractClient {
     @Override
     protected void doConnect() throws Throwable {
         long start = System.currentTimeMillis();
+
+        //消费者端开始连接，这一步的时候，服务提供者端就接到了连接请求，开始处理了
+        // getConnectAddress获取一个java.net.InetSocketAddress.InetSocketAddressHolder.InetSocketAddressHolder,
+        // 标识了"/192.168.2.101:20880"
         ChannelFuture future = bootstrap.connect(getConnectAddress());
         try {
             boolean ret = future.awaitUninterruptibly(getConnectTimeout(), TimeUnit.MILLISECONDS);
@@ -94,6 +100,7 @@ public class NettyClient extends AbstractClient {
                 newChannel.setInterestOps(Channel.OP_READ_WRITE);
                 try {
                     // Close old channel
+                    // 关闭旧的连接
                     Channel oldChannel = NettyClient.this.channel; // copy reference
                     if (oldChannel != null) {
                         try {

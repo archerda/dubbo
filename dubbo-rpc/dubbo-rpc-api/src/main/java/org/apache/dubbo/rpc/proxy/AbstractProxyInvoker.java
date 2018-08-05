@@ -82,12 +82,16 @@ public abstract class AbstractProxyInvoker<T> implements Invoker<T> {
     public Result invoke(Invocation invocation) throws RpcException {
         RpcContext rpcContext = RpcContext.getContext();
         try {
+            // 执行调用
+            // 调用 org.apache.dubbo.rpc.proxy.AbstractProxyInvoker.doInvoke
             Object obj = doInvoke(proxy, invocation.getMethodName(), invocation.getParameterTypes(), invocation.getArguments());
+
             if (RpcUtils.isFutureReturnType(invocation)) {
                 return new AsyncRpcResult((CompletableFuture<Object>) obj);
             } else if (rpcContext.isAsyncStarted()) { // ignore obj in case of RpcContext.startAsync()? always rely on user to write back.
                 return new AsyncRpcResult(rpcContext.getAsyncContext().getInternalFuture());
             } else {
+                //然后封装成结果返回
                 return new RpcResult(obj);
             }
         } catch (InvocationTargetException e) {

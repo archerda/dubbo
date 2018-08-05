@@ -55,7 +55,10 @@ public class ProtocolListenerWrapper implements Protocol {
             // 调用 RegistryProtocol#export;
             return protocol.export(invoker);
         }
-        // 调用 InjvmProtocol#invoke;
+        //先进行导出protocol.export(invoker)
+        //然后获取自适应的监听器
+        //最后返回的是包装了监听器的Exporter
+        //这里监听器的获取是getActivateExtension，如果指定了listener就加载实现，没有指定就不加载
         return new ListenerExporterWrapper<T>(protocol.export(invoker),
                 Collections.unmodifiableList(ExtensionLoader.getExtensionLoader(ExporterListener.class)
                         .getActivateExtension(invoker.getUrl(), Constants.EXPORTER_LISTENER_KEY)));
@@ -66,6 +69,8 @@ public class ProtocolListenerWrapper implements Protocol {
         if (Constants.REGISTRY_PROTOCOL.equals(url.getProtocol())) {
             return protocol.refer(type, url);
         }
+
+        // 这里会初始化监听器，包装
         return new ListenerInvokerWrapper<T>(protocol.refer(type, url),
                 Collections.unmodifiableList(
                         ExtensionLoader.getExtensionLoader(InvokerListener.class)

@@ -92,8 +92,10 @@ public class DefaultFuture implements ResponseFuture {
 
     public static void received(Channel channel, Response response) {
         try {
+            // 根据sessionId获取future
             DefaultFuture future = FUTURES.remove(response.getId());
             if (future != null) {
+                // 处理响应
                 future.doReceived(response);
             } else {
                 logger.warn("The timeout response finally returned at "

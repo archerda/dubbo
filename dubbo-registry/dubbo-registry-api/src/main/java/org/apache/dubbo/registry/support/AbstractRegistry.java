@@ -76,9 +76,14 @@ public abstract class AbstractRegistry implements Registry {
     private File file;
 
     public AbstractRegistry(URL url) {
+        //设置registryUrl
         setUrl(url);
+
         // Start file save timer
+        // 启动文件保存定时器
         syncSaveFile = url.getParameter(Constants.REGISTRY_FILESAVE_SYNC_KEY, false);
+
+        //会先去用户主目录下的.dubbo目录下加载缓存注册中心的缓存文件比如：dubbo-registry-127.0.0.1.cache
         String filename = url.getParameter(Constants.FILE_KEY, System.getProperty("user.home") + "/.dubbo/dubbo-registry-" + url.getParameter(Constants.APPLICATION_KEY) + "-" + url.getAddress() + ".cache");
         File file = null;
         if (ConfigUtils.isNotEmpty(filename)) {
@@ -90,7 +95,12 @@ public abstract class AbstractRegistry implements Registry {
             }
         }
         this.file = file;
+
+        //缓存文件存在的话就把文件读进内存中
         loadProperties();
+
+        //先获取backup url
+        //然后通知订阅
         notify(url.getBackupUrls());
     }
 
@@ -266,12 +276,17 @@ public abstract class AbstractRegistry implements Registry {
 
     @Override
     public void register(URL url) {
+        // url="consumer://192.168.2.101/com.github.archerda.dubbo.provider.HelloService?application=
+        // consumer-of-java-example-app&dubbo=2.6.2&interface=com.github.archerda.dubbo.provider.HelloService&methods
+        // =sayHello&pid=11117&revision=1.0&side=consumer&timestamp=1533056856399&version=1.0"
         if (url == null) {
             throw new IllegalArgumentException("register url == null");
         }
         if (logger.isInfoEnabled()) {
             logger.info("Register: " + url);
         }
+
+        //只是把url添加到registered这个set中。
         registered.add(url);
     }
 
@@ -288,6 +303,10 @@ public abstract class AbstractRegistry implements Registry {
 
     @Override
     public void subscribe(URL url, NotifyListener listener) {
+        // url = "consumer://192.168.2.101/com.github.archerda.dubbo.provider.HelloService?application=consumer-of-java-
+        // example-app&category=providers,configurators,routers&dubbo=2.6.2&interface=com.github.archerda.dubbo.provider
+        // .HelloService&methods=sayHello&pid=11117&revision=1.0&side=consumer&timestamp=1533056856399&version=1.0"
+        // listener = RegistryDirectory.class
         if (url == null) {
             throw new IllegalArgumentException("subscribe url == null");
         }
@@ -297,11 +316,15 @@ public abstract class AbstractRegistry implements Registry {
         if (logger.isInfoEnabled()) {
             logger.info("Subscribe: " + url);
         }
+
+        //先根据url获取已注册的监听器
         Set<NotifyListener> listeners = subscribed.get(url);
+        //没有监听器，就创建，并添加进去
         if (listeners == null) {
             subscribed.putIfAbsent(url, new ConcurrentHashSet<NotifyListener>());
             listeners = subscribed.get(url);
         }
+        //有监听器，直接把当前RegistryDirectory添加进去
         listeners.add(listener);
     }
 
@@ -372,6 +395,25 @@ public abstract class AbstractRegistry implements Registry {
     }
 
     protected void notify(URL url, NotifyListener listener, List<URL> urls) {
+        /*
+        url = "consumer://192.168.2.101/com.github.archerda.dubbo.provider.HelloService?application=consumer-of-java-
+        example-app&category=providers,configurators,routers&dubbo=2.6.2&interface=com.github.archerda.dubbo.provider
+        .HelloService&methods=sayHello&pid=11466&revision=1.0&side=consumer&timestamp=1533059101053&version=1.0"
+
+        listener = [RegistryDirectory]
+
+        urls =
+        [0] = dubbo://192.168.2.101:20880/com.github.archerda.dubbo.provider.HelloService?anyhost=true&application=java-exam
+        ple-app&default.retries=0&default.timeout=3000&dubbo=2.6.2&generic=false&interface=com.github.archerda.dubbo.pro
+        vider.HelloService&methods=sayHello&pid=10975&revision=1.0&side=provider&timestamp=1533055908018&version=1.0
+        [1] = empty://192.168.2.101/com.github.archerda.dubbo.provider.HelloService?application=consumer-of-java-example-app
+        &category=configurators&dubbo=2.6.2&interface=com.github.archerda.dubbo.provider.HelloService&methods=sayHello&p
+        id=11466&revision=1.0&side=consumer&timestamp=1533059101053&version=1.0
+        [2] = empty://192.168.2.101/com.github.archerda.dubbo.provider.HelloService?application=consumer-of-java-example-app
+        &category=routers&dubbo=2.6.2&interface=com.github.archerda.dubbo.provider.HelloService&methods=sayHello&pid=114
+        66&revision=1.0&side=consumer&timestamp=1533059101053&version=1.0
+         */
+
         if (url == null) {
             throw new IllegalArgumentException("notify url == null");
         }
@@ -389,6 +431,8 @@ public abstract class AbstractRegistry implements Registry {
         Map<String, List<URL>> result = new HashMap<String, List<URL>>();
         for (URL u : urls) {
             if (UrlUtils.isMatch(url, u)) {
+                //不同类型的数据分开通知，providers，consumers，routers，overrides
+                //允许只通知其中一种类型，但该类型的数据必须是全量的，不是增量的。
                 String category = u.getParameter(Constants.CATEGORY_KEY, Constants.DEFAULT_CATEGORY);
                 List<URL> categoryList = result.get(category);
                 if (categoryList == null) {
@@ -406,11 +450,22 @@ public abstract class AbstractRegistry implements Registry {
             notified.putIfAbsent(url, new ConcurrentHashMap<String, List<URL>>());
             categoryNotified = notified.get(url);
         }
+
+        /*
+        result =
+        0 = {HashMap$Node@4021} "configurators" -> " size = 1"
+        1 = {HashMap$Node@4051} "routers" -> " size = 1"
+        2 = {HashMap$Node@3991} "providers" -> " size = 1"
+         */
+
+        //对这里得到的providers，configurators，routers分别进行通知
         for (Map.Entry<String, List<URL>> entry : result.entrySet()) {
             String category = entry.getKey();
             List<URL> categoryList = entry.getValue();
             categoryNotified.put(category, categoryList);
+            // TODO by archerda on 2018/8/1: 这里作用是什么?
             saveProperties(url);
+            //这里的listener是RegistryDirectory
             listener.notify(categoryList);
         }
     }
