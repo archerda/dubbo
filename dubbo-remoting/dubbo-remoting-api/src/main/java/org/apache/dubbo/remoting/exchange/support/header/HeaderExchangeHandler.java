@@ -57,7 +57,7 @@ public class HeaderExchangeHandler implements ChannelHandlerDelegate {
         this.handler = handler;
     }
 
-    static void handleResponse(Channel channel, Response response) throws RemotingETxception {
+    static void handleResponse(Channel channel, Response response) throws RemotingException {
         if (response != null && !response.isHeartbeat()) {
             //设置response到消费者请求的Future中，以供消费者通过DefaultFuture.get()取得提供者的响应，此为同步转异步重要一步，
             // 且请求超时也由DefaultFuture控制。
