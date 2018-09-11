@@ -89,7 +89,8 @@ public class HeartbeatHandler extends AbstractChannelHandlerDelegate {
             return;
         }
 
-        // 这里是AllChannelHandler
+        // 如果是 dubbo.protocol.dispatcher=all, 那么这里是 AllChannelHandler
+        // 如果是 dubbo.protocol.dispatcher=message, 那么这里是 MessageOnlyChannelHandler
         handler.received(channel, message);
     }
 

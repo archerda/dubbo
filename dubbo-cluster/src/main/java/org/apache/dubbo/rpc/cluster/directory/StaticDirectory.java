@@ -28,6 +28,7 @@ import java.util.List;
  * StaticDirectory
  *
  */
+// 静态目录服务
 public class StaticDirectory<T> extends AbstractDirectory<T> {
 
     private final List<Invoker<T>> invokers;

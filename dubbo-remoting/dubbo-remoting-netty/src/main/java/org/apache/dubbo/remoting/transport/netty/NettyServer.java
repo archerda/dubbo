@@ -73,6 +73,7 @@ public class NettyServer extends AbstractServer implements Server {
         //worker线程池
         ExecutorService worker = Executors.newCachedThreadPool(new NamedThreadFactory("NettyServerWorker", true));
 
+        // IO线程池
         //ChannelFactory，没有指定工作者线程数量，就使用cpu+1或者32中的较小值;
         ChannelFactory channelFactory = new NioServerSocketChannelFactory(boss, worker, getUrl().getPositiveParameter(Constants.IO_THREADS_KEY, Constants.DEFAULT_IO_THREADS));
         bootstrap = new ServerBootstrap(channelFactory);

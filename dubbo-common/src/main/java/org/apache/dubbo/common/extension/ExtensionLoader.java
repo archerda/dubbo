@@ -99,7 +99,15 @@ public class ExtensionLoader<T> {
     private Map<String, IllegalStateException> exceptions = new ConcurrentHashMap<String, IllegalStateException>();
 
     private ExtensionLoader(Class<?> type) {
+        // 接口类型
         this.type = type;
+
+        // 对于扩展类型是ExtensionFactory的，设置为null
+        // getAdaptiveExtension方法获取一个运行时自适应的扩展类型
+        // 每个Extension只能有一个@Adaptive类型的实现，如果没有，dubbo会自动生成一个类
+        // objectFactory是一个ExtensionFactory类型的属性，主要用于加载需要注入的类型的实现
+        // objectFactory主要用在注入那一步，详细说明见注入时候的说明
+        // 这里记住非ExtensionFactory类型的返回的都是一个 AdaptiveExtensionFactory
         objectFactory = (type == ExtensionFactory.class ? null : ExtensionLoader.getExtensionLoader(ExtensionFactory.class).getAdaptiveExtension());
     }
 
@@ -109,18 +117,31 @@ public class ExtensionLoader<T> {
 
     @SuppressWarnings("unchecked")
     public static <T> ExtensionLoader<T> getExtensionLoader(Class<T> type) {
+        // 扩展点类型不能为空;
         if (type == null)
             throw new IllegalArgumentException("Extension type == null");
+
+        // 扩展点必须是接口;
         if (!type.isInterface()) {
             throw new IllegalArgumentException("Extension type(" + type + ") is not interface!");
         }
+
+        // 仅支持 @SPI 标记的接口;
         if (!withExtensionAnnotation(type)) {
             throw new IllegalArgumentException("Extension type(" + type +
                     ") is not extension, because WITHOUT @" + SPI.class.getSimpleName() + " Annotation!");
         }
 
+        // 先从缓存中获取指定类型的ExtensionLoader
+        // EXTENSION_LOADERS是一个ConcurrentHashMap，缓存了所有已经加载的ExtensionLoader的实例
+        // 比如这里加载Protocol.class，就以Protocol.class作为key，以新创建的ExtensionLoader作为value
+        // 每一个要加载的扩展点只会对应一个ExtensionLoader实例，也就是只会存在一个Protocol.class在缓存中
         ExtensionLoader<T> loader = (ExtensionLoader<T>) EXTENSION_LOADERS.get(type);
+
+        // 未命中缓存,
         if (loader == null) {
+            // 创建一个新的ExtensionLoader实例，放到缓存中去
+            // 对于每一个扩展，dubbo中只有一个对应的ExtensionLoader实例
             EXTENSION_LOADERS.putIfAbsent(type, new ExtensionLoader<T>(type));
             loader = (ExtensionLoader<T>) EXTENSION_LOADERS.get(type);
         }

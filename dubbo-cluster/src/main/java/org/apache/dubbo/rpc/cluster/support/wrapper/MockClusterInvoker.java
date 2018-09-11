@@ -72,9 +72,9 @@ public class MockClusterInvoker<T> implements Invoker<T> {
         //获取mock属性的值，我们没有配置，默认false
         String value = directory.getUrl().getMethodParameter(invocation.getMethodName(), Constants.MOCK_KEY, Boolean.FALSE.toString()).trim();
         if (value.length() == 0 || value.equalsIgnoreCase("false")) {
-            //no mock
+            // no mock
             // 调用远程;
-            // invoker是 FailoverClusterInvoker;
+            // invoker是 FailoverClusterInvoker; 如果有merge, 则是 MergeableClusterInvoker
             // 会首先进入AbstractClusterInvoker的invoke方法;
             result = this.invoker.invoke(invocation);
         } else if (value.startsWith("force")) {

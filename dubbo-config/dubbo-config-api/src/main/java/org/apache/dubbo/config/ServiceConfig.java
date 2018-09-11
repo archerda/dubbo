@@ -628,12 +628,6 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
                         /*
                         [JavassistProxyFactory$1.class源码]
 
-                        package com.alibaba.dubbo.rpc.proxy.javassist;
-
-                        import com.alibaba.dubbo.common.URL;
-                        import com.alibaba.dubbo.common.bytecode.Wrapper;
-                        import com.alibaba.dubbo.rpc.proxy.AbstractProxyInvoker;
-
                         class JavassistProxyFactory$1 extends AbstractProxyInvoker<T> {
                             JavassistProxyFactory$1(JavassistProxyFactory var1, Object x0, Class x1, URL x2, Wrapper var5) {
                                 super(x0, x1, x2);
@@ -643,6 +637,28 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
 
                             protected Object doInvoke(T proxy, String methodName, Class<?>[] parameterTypes, Object[] arguments) throws Throwable {
                                 return this.val$wrapper.invokeMethod(proxy, methodName, parameterTypes, arguments);
+                            }
+                        }
+                         */
+                        /*
+                        [Wrapper1源码]
+                        public class Wrapper1 extends Wrapper {
+                            public Object invokeMethod(Object o, String n, Class[] p, Object[] v) throws java.lang.reflect.InvocationTargetException {
+                                dubbo.provider.hello.service.impl.HelloServiceImpl w;
+                                try {
+                                    w = ((dubbo.provider.hello.service.impl.HelloServiceImpl) $1);
+                                } catch (Throwable e) {
+                                    throw new IllegalArgumentException(e);
+                                }
+                                try {
+                                    if ("sayHello".equals($2) && $3.length == 0) {
+                                        w.sayHello();
+                                        return null;
+                                    }
+                                } catch (Throwable e) {
+                                    throw new java.lang.reflect.InvocationTargetException(e);
+                                }
+                                throw new com.alibaba.dubbo.common.bytecode.NoSuchMethodException("Not found method \"" + $2 + "\" in class dubbo.provider.hello.service.impl.HelloServiceImpl.");
                             }
                         }
                          */
