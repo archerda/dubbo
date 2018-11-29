@@ -130,13 +130,17 @@ public abstract class AbstractInvoker<T> implements Invoker<T> {
                     + " is DESTROYED, can not be invoked any more!");
         }
 
-        //转成RpcInvocation
+        // 转成RpcInvocation
         RpcInvocation invocation = (RpcInvocation) inv;
 
         invocation.setInvoker(this);
+
+        // 填充接口参数
         if (attachment != null && attachment.size() > 0) {
             invocation.addAttachmentsIfAbsent(attachment);
         }
+
+        // 填充业务系统需要透传的参数
         Map<String, String> contextAttachments = RpcContext.getContext().getAttachments();
         if (contextAttachments != null) {
             /**
@@ -147,17 +151,19 @@ public abstract class AbstractInvoker<T> implements Invoker<T> {
              */
             invocation.addAttachments(contextAttachments);
         }
+
+        // 默认是同步调用，但也支持异步
         if (getUrl().getMethodParameter(invocation.getMethodName(), Constants.ASYNC_KEY, false)) {
             invocation.setAttachment(Constants.ASYNC_KEY, Boolean.TRUE.toString());
         }
 
-        //异步的话，需要添加id
+        // 幂等操作:异步操作默认添加invocation id，它是一个自增的AtomicLong
+        // 可以在RpcContext中设置attachments的{@link Constants.ASYNC_KEY}值来设置是同步还是异步
         RpcUtils.attachInvocationIdIfAsync(getUrl(), invocation);
-
 
         try {
 
-            //这里是调用DubboInvoker
+            // 这里是调用DubboInvoker
             return doInvoke(invocation);
 
         } catch (InvocationTargetException e) { // biz exception

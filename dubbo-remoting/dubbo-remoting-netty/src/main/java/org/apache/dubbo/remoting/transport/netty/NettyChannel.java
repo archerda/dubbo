@@ -99,6 +99,8 @@ final class NettyChannel extends AbstractChannel {
         try {
             //交给netty处理
             ChannelFuture future = channel.write(message);
+
+            // sent值只是为了性能调优，默认是false
             if (sent) {
                 timeout = getUrl().getPositiveParameter(Constants.TIMEOUT_KEY, Constants.DEFAULT_TIMEOUT);
                 // 在timeout时间内, 等待获取结果;
@@ -114,6 +116,7 @@ final class NettyChannel extends AbstractChannel {
             throw new RemotingException(this, "Failed to send message " + message + " to " + getRemoteAddress() + ", cause: " + e.getMessage(), e);
         }
 
+        // 当sent为true且数据发送时间超过指定的超时时间时，由Dubbo负责抛出异常
         if (!success) {
             // 超时
             throw new RemotingException(this, "Failed to send message " + message + " to " + getRemoteAddress()

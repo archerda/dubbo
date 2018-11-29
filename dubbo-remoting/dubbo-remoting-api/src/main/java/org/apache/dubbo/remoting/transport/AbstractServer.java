@@ -193,6 +193,8 @@ public abstract class AbstractServer extends AbstractEndpoint implements Server 
             return;
         }
 
+        // 检查新添加channel后是否会超出提供者配置的accepts配置，如果超出，则直接打印错误日志并关闭该Channel，
+        // 这样的话消费者端自然会收到连接中断的异常信息，详细可以见AbstractServer#connected方法。
         Collection<Channel> channels = getChannels();
         if (accepts > 0 && channels.size() > accepts) {
             logger.error("Close channel " + ch + ", cause: The server " + ch.getLocalAddress() + " connections greater than max config " + accepts);

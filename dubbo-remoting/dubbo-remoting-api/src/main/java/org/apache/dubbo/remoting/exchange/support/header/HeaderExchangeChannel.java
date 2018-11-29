@@ -110,7 +110,10 @@ final class HeaderExchangeChannel implements ExchangeChannel {
         //创建一个请求头
         Request req = new Request();
         req.setVersion(Version.getProtocolVersion());
+
+        // 相比OneWay，同步和异步调用属于TwoWay
         req.setTwoWay(true);
+
         //这里request参数里面保存着
         // methodName=sayHello,
         // parameterTypes=[class java.lang.String],
@@ -119,6 +122,8 @@ final class HeaderExchangeChannel implements ExchangeChannel {
         // version=1.0,
         // timeout=3000
         req.setData(request);
+
+        // 创建DefaultFuture，用于将请求和应答关联起来
         DefaultFuture future = new DefaultFuture(channel, req, timeout);
         try {
             //这里的channel是NettyClient

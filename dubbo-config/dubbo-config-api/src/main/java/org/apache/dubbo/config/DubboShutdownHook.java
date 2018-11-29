@@ -66,8 +66,11 @@ public class DubboShutdownHook extends Thread {
             return;
         }
         // destroy all the registries
+        // 关闭所有创建的注册中心
         AbstractRegistryFactory.destroyAll();
+
         // destroy all the protocols
+        // 关闭协议暴露，包括 provider 和 consumer
         destroyProtocols();
     }
 

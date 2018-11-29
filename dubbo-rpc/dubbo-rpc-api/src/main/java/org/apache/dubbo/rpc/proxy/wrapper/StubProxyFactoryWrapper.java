@@ -36,6 +36,7 @@ import org.apache.dubbo.rpc.service.GenericService;
 import java.lang.reflect.Constructor;
 
 /**
+ *
  * StubProxyFactoryWrapper
  */
 public class StubProxyFactoryWrapper implements ProxyFactory {

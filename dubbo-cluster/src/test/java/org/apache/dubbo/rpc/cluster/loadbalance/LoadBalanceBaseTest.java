@@ -77,6 +77,11 @@ public class LoadBalanceBaseTest {
         URL url3 = URL.valueOf("test://127.0.0.1:3/DemoService");
         URL url4 = URL.valueOf("test://127.0.0.1:4/DemoService");
         URL url5 = URL.valueOf("test://127.0.0.1:5/DemoService");
+//        URL url1 = URL.valueOf("test://127.0.0.1:1/DemoService?weight=1");
+//        URL url2 = URL.valueOf("test://127.0.0.1:2/DemoService?weight=2");
+//        URL url3 = URL.valueOf("test://127.0.0.1:3/DemoService?weight=3");
+//        URL url4 = URL.valueOf("test://127.0.0.1:4/DemoService?weight=4");
+//        URL url5 = URL.valueOf("test://127.0.0.1:5/DemoService?weight=5");
 
         given(invoker1.isAvailable()).willReturn(true);
         given(invoker1.getInterface()).willReturn(LoadBalanceBaseTest.class);

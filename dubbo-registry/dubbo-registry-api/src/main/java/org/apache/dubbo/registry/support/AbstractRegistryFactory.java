@@ -66,6 +66,7 @@ public abstract class AbstractRegistryFactory implements RegistryFactory {
         // Lock up the registry shutdown process
         LOCK.lock();
         try {
+            // 关闭所有已创建的注册中心
             for (Registry registry : getRegistries()) {
                 try {
                     registry.destroy();

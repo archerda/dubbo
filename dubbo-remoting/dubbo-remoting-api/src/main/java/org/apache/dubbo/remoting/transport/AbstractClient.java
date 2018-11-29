@@ -257,7 +257,7 @@ public abstract class AbstractClient extends AbstractEndpoint implements Client 
 
     @Override
     public void send(Object message, boolean sent) throws RemotingException {
-        //重连
+        // 重连
         if (send_reconnect && !isConnected()) {
             connect();
         }

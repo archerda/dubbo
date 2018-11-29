@@ -83,7 +83,7 @@ public abstract class AbstractRegistry implements Registry {
         // 启动文件保存定时器
         syncSaveFile = url.getParameter(Constants.REGISTRY_FILESAVE_SYNC_KEY, false);
 
-        //会先去用户主目录下的.dubbo目录下加载缓存注册中心的缓存文件比如：dubbo-registry-127.0.0.1.cache
+        //会先去用户主目录下的.dubbo目录下加载缓存注册中心的缓存文件比如：dubbo-registry-java-example-127.0.0.1.cache
         String filename = url.getParameter(Constants.FILE_KEY, System.getProperty("user.home") + "/.dubbo/dubbo-registry-" + url.getParameter(Constants.APPLICATION_KEY) + "-" + url.getAddress() + ".cache");
         File file = null;
         if (ConfigUtils.isNotEmpty(filename)) {

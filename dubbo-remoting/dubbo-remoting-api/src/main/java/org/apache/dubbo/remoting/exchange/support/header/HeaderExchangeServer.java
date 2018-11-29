@@ -112,16 +112,23 @@ public class HeaderExchangeServer implements ExchangeServer {
             if (getUrl().getParameter(Constants.CHANNEL_SEND_READONLYEVENT_KEY, true)) {
                 sendChannelReadOnlyEvent();
             }
+
+            // 如果还有进行中的任务并且没有到达等待时间的上限，则继续等待
             while (HeaderExchangeServer.this.isRunning()
                     && System.currentTimeMillis() - start < max) {
                 try {
+                    // 休息10毫秒再检查
                     Thread.sleep(10);
                 } catch (InterruptedException e) {
                     logger.warn(e.getMessage(), e);
                 }
             }
         }
+
+        // 关闭心跳，停止应答
         doClose();
+
+        // 关闭通信通道，可以参看AbstractServer#close和NettyServer#doClose。
         server.close(timeout);
     }
 
@@ -151,8 +158,11 @@ public class HeaderExchangeServer implements ExchangeServer {
         if (!closed.compareAndSet(false, true)) {
             return;
         }
+
+        // 取消心跳的Future
         stopHeartbeatTimer();
         try {
+            // 关闭心跳的线程池
             scheduled.shutdown();
         } catch (Throwable t) {
             logger.warn(t.getMessage(), t);

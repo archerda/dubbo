@@ -136,7 +136,11 @@ public class HeaderExchangeClient implements ExchangeClient {
     public void close(int timeout) {
         // Mark the client into the closure process
         startClose();
+
+        // 关闭心跳
         doClose();
+
+        // 关闭通讯资源，关闭后不能重新建立连接，也不能向下游发送请求
         channel.close(timeout);
     }
 

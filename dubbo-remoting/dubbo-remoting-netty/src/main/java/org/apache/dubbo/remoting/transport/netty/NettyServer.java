@@ -67,15 +67,17 @@ public class NettyServer extends AbstractServer implements Server {
     protected void doOpen() throws Throwable {
         NettyHelper.setNettyLoggerFactory();
 
-        //boss线程池
+        // 无界的boss线程池，负责和消费者建立连接
         ExecutorService boss = Executors.newCachedThreadPool(new NamedThreadFactory("NettyServerBoss", true));
 
-        //worker线程池
+        // 无界的worker线程池，负责连接的数据交换
         ExecutorService worker = Executors.newCachedThreadPool(new NamedThreadFactory("NettyServerWorker", true));
 
         // IO线程池
-        //ChannelFactory，没有指定工作者线程数量，就使用cpu+1或者32中的较小值;
+        // ChannelFactory，没有指定工作者线程数量，就使用cpu+1或者32中的较小值;
         ChannelFactory channelFactory = new NioServerSocketChannelFactory(boss, worker, getUrl().getPositiveParameter(Constants.IO_THREADS_KEY, Constants.DEFAULT_IO_THREADS));
+
+        // Netty服务启动类
         bootstrap = new ServerBootstrap(channelFactory);
 
         final NettyHandler nettyHandler = new NettyHandler(getUrl(), this);
@@ -93,9 +95,16 @@ public class NettyServer extends AbstractServer implements Server {
                 if (idleTimeout > 10000) {
                     pipeline.addLast("timer", new IdleStateHandler(timer, idleTimeout / 1000, 0, 0));
                 }*/
+
+                // 解码处理器，{@link InternalDecoder}
                 pipeline.addLast("decoder", adapter.getDecoder());
+
+                // 编码处理器，{@link InternalEncoder}
                 pipeline.addLast("encoder", adapter.getEncoder());
+
+                // 数据解析后流程处理的起点，{@link NettyHandler}
                 pipeline.addLast("handler", nettyHandler);
+
                 return pipeline;
             }
         });

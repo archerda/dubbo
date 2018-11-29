@@ -125,6 +125,7 @@ public class DefaultFuture implements ResponseFuture {
             try {
                 while (!isDone()) {
                     done.await(timeout, TimeUnit.MILLISECONDS);
+                    // 完成了，或者超过了超时阈值，就跳出循环；
                     if (isDone() || System.currentTimeMillis() - start > timeout) {
                         break;
                     }
@@ -257,6 +258,7 @@ public class DefaultFuture implements ResponseFuture {
         try {
             response = res;
             if (done != null) {
+                // 释放信号
                 done.signal();
             }
         } finally {

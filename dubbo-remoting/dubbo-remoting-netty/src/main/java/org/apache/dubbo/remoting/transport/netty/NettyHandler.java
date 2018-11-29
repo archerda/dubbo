@@ -61,11 +61,15 @@ public class NettyHandler extends SimpleChannelHandler {
 
     @Override
     public void channelConnected(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
+        // 从channelMap中创建或获取一个NettyChannel
         NettyChannel channel = NettyChannel.getOrAddChannel(ctx.getChannel(), url, handler);
         try {
             if (channel != null) {
+                // 如果在channels中没有则创建，注意这里的key是远端消费者的地址，即IP+端口
                 channels.put(NetUtils.toAddressString((InetSocketAddress) ctx.getChannel().getRemoteAddress()), channel);
             }
+
+            // 这里的handler正是创建此NettyHandler的NettyServer
             handler.connected(channel);
         } finally {
             NettyChannel.removeChannelIfDisconnected(ctx.getChannel());

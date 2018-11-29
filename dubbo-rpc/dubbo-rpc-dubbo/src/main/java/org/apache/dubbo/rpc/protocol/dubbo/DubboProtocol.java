@@ -461,8 +461,10 @@ public class DubboProtocol extends AbstractProtocol {
             //getSharedClient中先去缓存中查找，没有的话就会新建，也是调用initClient方法
 
             if (service_share_connect) {
+                // 使用共享的TCP长连接
                 clients[i] = getSharedClient(url);
             } else {
+                // 单独为该URL建立TCP长连接
                 clients[i] = initClient(url);
             }
         }
@@ -540,6 +542,8 @@ public class DubboProtocol extends AbstractProtocol {
 
     @Override
     public void destroy() {
+
+        // 关闭暴露的服务
         for (String key : new ArrayList<String>(serverMap.keySet())) {
             ExchangeServer server = serverMap.remove(key);
             if (server != null) {
@@ -554,6 +558,7 @@ public class DubboProtocol extends AbstractProtocol {
             }
         }
 
+        // 关闭对下游服务的调用
         for (String key : new ArrayList<String>(referenceClientMap.keySet())) {
             ExchangeClient client = referenceClientMap.remove(key);
             if (client != null) {

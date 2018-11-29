@@ -27,7 +27,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class RoundRobinLoadBalanceTest extends LoadBalanceBaseTest {
     @Test
     public void testRoundRobinLoadBalanceSelect() {
-        int runs = 10000;
+        int runs = 10;
         Map<Invoker, AtomicLong> counter = getInvokeCounter(runs, RoundRobinLoadBalance.NAME);
         for (Invoker minvoker : counter.keySet()) {
             Long count = counter.get(minvoker).get();
