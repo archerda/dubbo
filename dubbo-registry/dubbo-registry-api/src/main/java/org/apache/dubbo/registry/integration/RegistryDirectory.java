@@ -252,11 +252,17 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
     3.如果传入的invokerUrl列表是空，则表示只是下发的override规则或route规则，需要重新交叉对比，决定是否需要重新引用。
      */
     private void refreshInvoker(List<URL> invokerUrls) {
+
         /*
-        invokerUrls =
-        0 = dubbo://192.168.2.101:20880/com.github.archerda.dubbo.provider.HelloService?anyhost=true&application=java-ex
-        ample-app&default.retries=0&default.timeout=3000&dubbo=2.6.2&generic=false&interface=com.github.archerda.dubbo.p
-        rovider.HelloService&methods=sayHello&pid=10975&revision=1.0&side=provider&timestamp=1533055908018&version=1.0
+        configurators:
+        override://10.112.32.24:28015/com.facishare.wechat.device.manage.api.service.DeviceService?category=configurators&dynamic=false&enabled=true&group=gray_outer_attendence_work_order&version=1.0&weight=100
+        empty://10.21.0.20/com.facishare.wechat.union.core.api.service.OpenCustomerService?application=wechat-union-fcpserver&category=configurators&compiler=javassist&default.check=false&default.group=*&default.init=false&default.loadbalance=grayLoadBalance&default.reference.filter=grayFilter&default.retries=0&default.timeout=20000&dubbo=2.9.2-SNAPSHOT&interface=com.facishare.wechat.union.core.api.service.OpenCustomerService&logger=slf4j&methods=queryAllUserIdsAndDepartmentIds,query,createOpenCustomersWithDepartmentIds,createOpenCustomers,updateOpenCustomersGmtModified,deleteAllCustomerGroup,queryCustomerInfoByUserId,deleteCustomerGroup,queryOuterServices,updateCustomerStatus,queryByAppId,createCustomerGroup,updateOpenCustomerRole,queryOpenCustomer,queryByCustomerId,queryUserIdsIncludeUserIdsOfDepartments,notifyOuterServiceModified,deleteOpenCustomer,updateCustomerGroup,queryCustomerGroups,getCustomerStatus&organization=FSOPEN&owner=wecha-union-fcpserver&pid=3173&revision=0.0.6-SNAPSHOT&side=consumer&timestamp=1546844530468&version=1.0
+
+        routers:
+        empty://10.21.0.20/com.facishare.wechat.union.core.api.service.OpenCustomerService?application=wechat-union-fcpserver&category=routers&compiler=javassist&default.check=false&default.group=*&default.init=false&default.loadbalance=grayLoadBalance&default.reference.filter=grayFilter&default.retries=0&default.timeout=20000&dubbo=2.9.2-SNAPSHOT&interface=com.facishare.wechat.union.core.api.service.OpenCustomerService&logger=slf4j&methods=queryAllUserIdsAndDepartmentIds,query,createOpenCustomersWithDepartmentIds,createOpenCustomers,updateOpenCustomersGmtModified,deleteAllCustomerGroup,queryCustomerInfoByUserId,deleteCustomerGroup,queryOuterServices,updateCustomerStatus,queryByAppId,createCustomerGroup,updateOpenCustomerRole,queryOpenCustomer,queryByCustomerId,queryUserIdsIncludeUserIdsOfDepartments,notifyOuterServiceModified,deleteOpenCustomer,updateCustomerGroup,queryCustomerGroups,getCustomerStatus&organization=FSOPEN&owner=wecha-union-fcpserver&pid=3173&revision=0.0.6-SNAPSHOT&side=consumer&timestamp=1546844530468&version=1.0
+
+        providers：
+        dubbo://10.112.32.41:8063/com.facishare.wechat.union.core.api.service.OpenCustomerService?anyhost=true&application=wechat-union-core&compiler=javassist&default.cluster=failover&default.delay=-1&default.group=gray_outer_attendence_work_order&default.loadbalance=leastactive&default.proxy=javassist&default.retries=0&default.serialization=hessian2&default.service.filter=tracerpc,internationalFilter&default.timeout=30000&delay=-1&dispatcher=message&dubbo=2.9.2-SNAPSHOT&generic=false&interface=com.facishare.wechat.union.core.api.service.OpenCustomerService&logger=slf4j&methods=queryAllUserIdsAndDepartmentIds,query,createOpenCustomersWithDepartmentIds,createOpenCustomers,updateOpenCustomersGmtModified,deleteAllCustomerGroup,queryCustomerInfoByUserId,deleteCustomerGroup,queryOuterServices,updateCustomerStatus,queryByAppId,createCustomerGroup,updateOpenCustomerRole,queryOpenCustomer,queryByCustomerId,queryUserIdsIncludeUserIdsOfDepartments,notifyOuterServiceModified,deleteOpenCustomer,queryCustomerGroups,updateCustomerGroup,getCustomerStatus&organization=FSOPEN&owner=wechat-union-core&pid=57989&revision=0.0.6-SNAPSHOT&side=provider&threadpool=limited&threads=200&timestamp=1546841199849&version=1.0
          */
 
         // 协议是 empty
@@ -331,6 +337,7 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
             } else if (groupMap.size() > 1) {
                 List<Invoker<T>> groupInvokers = new ArrayList<Invoker<T>>();
                 for (List<Invoker<T>> groupList : groupMap.values()) {
+                    // 如果有多个group，用cluster包装，默认是failover；
                     groupInvokers.add(cluster.join(new StaticDirectory<T>(groupList)));
                 }
                 result.put(method, groupInvokers);
